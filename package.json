@@ -1,0 +1,11 @@
+{
+  "name": "groteknut",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Knutselideeën voor kinderen van 1 t/m 5 jaar – statische web-app voor GitHub Pages.",
+  "type": "module",
+  "scripts": {
+    "validate": "node tools/validate.mjs",
+    "serve": "python3 -m http.server 8080"
+  }
+}

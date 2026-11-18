@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Groteknut · knutselideeën voor 1 t/m 5 jaar</title>
+  <meta name="description" content="Ruim 130 knutselideeën voor kinderen van 1 t/m 5 jaar die allemaal binnen kunnen. Filter op leeftijd, rommel, nat of vies en wat je in huis hebt. Met veiligheidstips, recepten en wat je kunt zeggen.">
+  <meta name="theme-color" content="#fff8f1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#16121e" media="(prefers-color-scheme: dark)">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Groteknut">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="nl_NL">
+  <meta property="og:title" content="Groteknut – knutselideeën voor 1 t/m 5 jaar">
+  <meta property="og:description" content="Ruim 130 knutselideeën die allemaal binnen kunnen. Filter op leeftijd, rommel en wat je in huis hebt.">
+  <meta property="og:url" content="https://constantdynamics.github.io/groteknut/">
+  <meta property="og:image" content="https://constantdynamics.github.io/groteknut/icons/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preload" href="fonts/nunito-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/style.css">
+  <script>
+    try {
+      var t = JSON.parse(localStorage.getItem('groteknut:v1') || '{}').theme;
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
+  </script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#app">Naar de inhoud</a>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#/" aria-label="Groteknut, naar Ontdek">
+        <img class="brand-logo" src="icons/icon.svg" alt="" width="38" height="38">
+        <span><span class="brand-name">Groteknut</span><span class="brand-tag">knutselen met 1- tot 5-jarigen</span></span>
+      </a>
+      <nav class="topnav" aria-label="Hoofdmenu">
+        <a href="#/" data-tab="ontdek">Ontdek</a>
+        <a href="#/spullen" data-tab="spullen">Mijn spullen</a>
+        <a href="#/bewaard" data-tab="bewaard">Bewaard</a>
+        <a href="#/recepten" data-tab="recepten">Recepten</a>
+        <a href="#/gids" data-tab="gids">Gids</a>
+      </nav>
+      <button class="btn btn-small install-btn" id="install" type="button" data-action="install" aria-label="Installeer de app">📲 <span class="lbl">Installeer</span></button>
+      <button class="icon-btn" id="theme-btn" type="button" data-action="theme" aria-label="Weergave wisselen">🌗</button>
+    </div>
+  </header>
+
+  <main id="app" tabindex="-1">
+    <p class="muted" style="padding:48px 0;text-align:center">Even geduld, de knutselspullen worden klaargezet…</p>
+    <noscript><p style="padding:24px;text-align:center">Groteknut heeft JavaScript nodig. Zet JavaScript aan in je browser.</p></noscript>
+  </main>
+
+  <nav class="tabbar" aria-label="Menu">
+    <a href="#/" data-tab="ontdek"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 6l1.8 4.7 4.7 1.8-4.7 1.8L11 19l-1.8-4.7-4.7-1.8 4.7-1.8z"/><path d="M18.5 2.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></svg></span>Ontdek</a>
+    <a href="#/spullen" data-tab="spullen"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10h18l-1.6 9.2a2 2 0 0 1-2 1.8H6.6a2 2 0 0 1-2-1.8z"/><path d="M8 10l3-6"/><path d="M16 10l-3-6"/><path d="M9 14v3"/><path d="M15 14v3"/></svg></span>Spullen</a>
+    <a href="#/bewaard" data-tab="bewaard"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.6 7.6 3.9 4 7.5 4c2 0 3.5 1.1 4.5 2.6C13 5.1 14.5 4 16.5 4c3.6 0 5.9 3.6 4.7 7.1-1.7 4.8-9.2 9.4-9.2 9.4z"/></svg></span>Bewaard</a>
+    <a href="#/recepten" data-tab="recepten"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11h18a9 9 0 0 1-18 0z"/><path d="M8.5 7.5c0-1.6 1.2-2.4 1.2-4"/><path d="M13.5 7.5c0-1.6 1.2-2.4 1.2-4"/></svg></span>Recepten</a>
+    <a href="#/gids" data-tab="gids"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5c3-1 6-1 10 1.5C16 4 19 4 22 5v14c-3-1-6-1-10 1.5C8 18 5 18 2 19z"/><path d="M12 6.5v14"/></svg></span>Gids</a>
+  </nav>
+
+  <div class="toast-wrap" id="toasts" aria-live="polite"></div>
+  <script nomodule>document.getElementById('app').innerHTML = '<p style="padding:24px;text-align:center">Je browser is helaas te oud voor Groteknut. Probeer een recente versie van Safari, Chrome, Edge of Firefox.</p>';</script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "Groteknut – knutselideeën voor 1 t/m 5 jaar",
+  "short_name": "Groteknut",
+  "description": "Knutselideeën voor kinderen van 1 t/m 5 jaar die allemaal binnen kunnen. Filter op leeftijd, rommel, nat of vies en wat je in huis hebt.",
+  "lang": "nl",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fff8f1",
+  "theme_color": "#fff8f1",
+  "categories": ["education", "kids", "lifestyle"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

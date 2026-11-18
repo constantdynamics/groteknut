@@ -183,7 +183,7 @@ export const MATERIALS = [
   { id: 'bal', label: 'Zachte bal', group: 'speelgoed', alt: 'een opgerolde sok' },
   { id: 'knuffels', label: 'Knuffels', group: 'speelgoed' },
   { id: 'badspeelgoed', label: 'Badspeeltjes (eendjes, bekertjes)', group: 'speelgoed', alt: 'plastic deksels of kurken' },
-  { id: 'pingpongballen', label: 'Pingpongballetjes', group: 'speelgoed', alt: 'stevige propjes aluminiumfolie' },
+  { id: 'pingpongballen', label: 'Pingpongballetjes', group: 'speelgoed', small: true, alt: 'een grotere zachte bal voor kinderen onder de 3' },
   { id: 'poppen', label: 'Pop met kleertjes', group: 'speelgoed', alt: 'knuffels en sokken' },
   { id: 'speeldeeg', label: 'Speeldeeg of klei', group: 'speelgoed', recipe: 'speeldeeg', alt: 'zelf maken (zie Recepten)' },
 

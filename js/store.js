@@ -11,8 +11,13 @@ export const DEFAULT_FILTERS = {
   cats: [],
   themes: [],
   learn: [],
-  timeMax: 999,
+  dur: 'any', // any | long | 20 | 30 | 45 | short
   prepMax: 999,
+  cleanMax: 999,
+  noiseMax: 3,
+  energy: 'any', // any | rustig | actief
+  places: [],
+  stay: false,
   solo: false,
   q: '',
   sort: 'best',

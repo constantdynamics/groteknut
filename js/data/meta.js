@@ -66,3 +66,27 @@ export const AGES = [
   { age: 4, label: '4 jaar', name: 'kleuter' },
   { age: 5, label: '5 jaar', name: 'kleuter' },
 ];
+
+// Geluid, energie en plek (voor filters en sorteren).
+export const NOISE = [
+  { level: 1, label: 'Stil', emoji: '🤫', desc: 'Kan prima als er iemand slaapt of als je belt.' },
+  { level: 2, label: 'Gezellig geluid', emoji: '🙂', desc: 'Gewoon praten en spelen.' },
+  { level: 3, label: 'Lawaaierig', emoji: '🥁', desc: 'Er wordt gerend, getrommeld of gegild.' },
+];
+
+export const ENERGY = [
+  { level: 1, label: 'Rustig', emoji: '🧘', desc: 'Vooral zitten en geconcentreerd bezig zijn.' },
+  { level: 2, label: 'Afwisselend', emoji: '🚶', desc: 'Af en toe opstaan en rondlopen.' },
+  { level: 3, label: 'Actief', emoji: '🏃', desc: 'Rennen, springen, kruipen of gooien.' },
+];
+
+export const PLACES = [
+  { id: 'tafel', label: 'Aan tafel', emoji: '🍽️' },
+  { id: 'vloer', label: 'Op de vloer', emoji: '🧸' },
+  { id: 'muur', label: 'Aan muur of raam', emoji: '🪟' },
+  { id: 'bad', label: 'In bad of douche', emoji: '🛁' },
+  { id: 'keuken', label: 'In de keuken', emoji: '🍳' },
+];
+
+// Wat is ‘lang bezig’ per leeftijd? (minuten)
+export const LONG_PLAY = { 1: 15, 2: 20, 3: 30, 4: 45, 5: 45 };

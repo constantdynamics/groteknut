@@ -201,7 +201,9 @@ export const GUIDE = [
       {
         type: 'list',
         items: [
-          '**Privacy.** Alles wat je invult (je spullen, favorieten en lijstjes) blijft op je eigen telefoon of computer. Er is geen account, geen tracking en er worden geen gegevens verstuurd.',
+          '**Privacy.** Alles wat je invult (je spullen, favorieten, lijstjes en foto’s) blijft op je eigen telefoon of computer. Er is geen account, geen tracking en er worden geen gegevens of foto’s verstuurd.',
+          '**Foto’s bewaren.** Je foto’s staan alleen in deze browser. Wis je je browsergegevens, dan zijn ze weg: sla je favorieten dus ook op je telefoon op (open een foto en tik op Opslaan of Delen). Op een iPhone blijven ze het best bewaard als je Groteknut op je beginscherm zet.',
+          '**Voorbeelden op Pinterest.** Bij elk idee staat een knop die een zoekopdracht op Pinterest opent. Die foto’s zijn van de makers zelf; Groteknut neemt ze niet over.',
           '**Werkt offline.** Na het eerste bezoek werkt de app ook zonder internet.',
           '**Op je beginscherm.** iPhone: tik in Safari op Deel en kies ‘Zet op beginscherm’. Android: tik in Chrome op het menu (⋮) en kies ‘App installeren’ of ‘Toevoegen aan startscherm’.',
           '**Jij kent je kind het best.** De ideeën zijn met zorg samengesteld, maar schat altijd zelf in wat veilig is en blijf in de buurt.',

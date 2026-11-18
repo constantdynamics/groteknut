@@ -11,9 +11,15 @@ export const DEFAULT_FILTERS = {
   cats: [],
   themes: [],
   learn: [],
-  timeMax: 999,
+  dur: 'any', // any | long | 20 | 30 | 45 | short
   prepMax: 999,
+  cleanMax: 999,
+  noiseMax: 3,
+  energy: 'any', // any | rustig | actief
+  places: [],
+  stay: false,
   solo: false,
+  sib: false, // alleen ideeën met een rol voor jong én oud
   q: '',
   sort: 'best',
 };
@@ -29,6 +35,8 @@ const DEFAULTS = {
   theme: 'auto',
   welcomed: false,
   moreOpen: false,
+  week: null, // { start: 'JJJJ-MM-DD', seed, days: [idee-id × 7], skip: [], done: {dag: true}, filters, label }
+  sitter: null, // idee-id's voor de oppaskaart (null = standaardkeuze)
 };
 
 const clone = (o) => JSON.parse(JSON.stringify(o));

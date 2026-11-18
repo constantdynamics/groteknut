@@ -113,6 +113,8 @@ export const MATERIALS = [
   { id: 'potjes', label: 'Kleine potjes of bakjes met deksel', group: 'keuken', alt: 'een eierdoos of ijsblokjesvorm' },
   { id: 'blender', label: 'Blender of staafmixer', group: 'keuken' },
   { id: 'pipet', label: 'Pipet of medicijnspuitje (zonder naald)', group: 'keuken', alt: 'een theelepel, of een rietje met je vinger erop' },
+  { id: 'kinderservies', label: 'Plastic servies: bordjes, bekertjes, theepotje', group: 'keuken', alt: 'plastic bekers en bakjes' },
+  { id: 'kindermes', label: 'Kindermes of botermes', group: 'keuken', alt: 'een plastic mes' },
 
   // Badkamer & huishouden
   { id: 'afwasmiddel', label: 'Afwasmiddel', group: 'huis' },
@@ -135,6 +137,13 @@ export const MATERIALS = [
   { id: 'bruistablet', label: 'Bruistablet (bijv. vitamine C)', group: 'huis', alt: 'een theelepel zout (de bubbels gaan dan langzamer)' },
   { id: 'led-lampje', label: 'LED-lampje (waxinelichtje op batterij of lampionstokje)', group: 'huis', alt: 'een klein zaklampje' },
   { id: 'oud-laken', label: 'Oud laken, tafelzeil of douchegordijn (als knoeimat)', group: 'huis', alt: 'oude kranten of een opengeknipte vuilniszak' },
+  { id: 'oud-toetsenbord', label: 'Oud toetsenbord, rekenmachine of speelgoedtelefoon', group: 'huis', alt: 'een op karton getekend toetsenbord' },
+  { id: 'borstels', label: 'Haarborstels en kammen', group: 'huis', alt: 'een schone, oude tandenborstel' },
+  { id: 'opstapje', label: 'Opstapje of stevig krukje', group: 'huis', alt: 'een stevige stoel (blijf erbij)' },
+  { id: 'mandje', label: 'Mandje of lage bak', group: 'huis', alt: 'een schoenendoos zonder deksel' },
+  { id: 'stoffer-blik', label: 'Stoffer en blik of een kleine bezem', group: 'huis', alt: 'een droog doekje of een handveger' },
+  { id: 'koptelefoon', label: 'Koptelefoon voor kinderen (met volumebegrenzer)', group: 'huis', alt: 'zacht een luisterverhaal via een speaker' },
+  { id: 'stempelkussen', label: 'Stempelkussen (afwasbare inkt)', group: 'tekenen', alt: 'een sponsje met een beetje plakkaatverf' },
 
   // Recyclebak & restjes
   { id: 'wc-rollen', label: 'Wc-rolletjes en keukenrolkokers', group: 'recycle', alt: 'opgerold karton met plakband' },
@@ -162,6 +171,8 @@ export const MATERIALS = [
   { id: 'glitter', label: 'Glitter (liefst biologisch afbreekbaar)', group: 'textiel', alt: 'snippers aluminiumfolie of confetti' },
   { id: 'stoffen-tas', label: 'Stoffen tas, kussensloop of grote sok', group: 'textiel', alt: 'een doos met een gat erin' },
   { id: 'elastiekkoord', label: 'Hoedenelastiek of elastiekkoord', group: 'textiel', alt: 'een ijsstokje om het masker aan vast te houden' },
+  { id: 'verkleedkleren', label: 'Verkleedkleren: oude kleren, hoeden, tassen en sjaals', group: 'textiel', alt: 'kussenslopen, theedoeken en grote T-shirts' },
+  { id: 'doekjes', label: 'Dunne sjaaltjes, hydrofiele doeken of zakdoeken', group: 'textiel', alt: 'servetten of keukenpapier' },
 
   // Natuur (verzameld)
   { id: 'bladeren', label: 'Bladeren', group: 'natuur', alt: 'zelf uitgeknipte papieren blaadjes' },
@@ -183,9 +194,11 @@ export const MATERIALS = [
   { id: 'bal', label: 'Zachte bal', group: 'speelgoed', alt: 'een opgerolde sok' },
   { id: 'knuffels', label: 'Knuffels', group: 'speelgoed' },
   { id: 'badspeelgoed', label: 'Badspeeltjes (eendjes, bekertjes)', group: 'speelgoed', alt: 'plastic deksels of kurken' },
-  { id: 'pingpongballen', label: 'Pingpongballetjes', group: 'speelgoed', alt: 'stevige propjes aluminiumfolie' },
+  { id: 'pingpongballen', label: 'Pingpongballetjes', group: 'speelgoed', small: true, alt: 'een grotere zachte bal voor kinderen onder de 3' },
   { id: 'poppen', label: 'Pop met kleertjes', group: 'speelgoed', alt: 'knuffels en sokken' },
   { id: 'speeldeeg', label: 'Speeldeeg of klei', group: 'speelgoed', recipe: 'speeldeeg', alt: 'zelf maken (zie Recepten)' },
+  { id: 'boeken', label: 'Prentenboeken', group: 'speelgoed', alt: 'tijdschriften of reclamefolders' },
+  { id: 'dobbelsteen', label: 'Dobbelsteen', group: 'speelgoed', alt: 'een doosje met stippen erop getekend' },
 
   // Heeft (bijna) iedereen
   { id: 'water', label: 'Water', group: 'basis', basic: true },
@@ -200,13 +213,16 @@ export const MATERIALS = [
   { id: 'oud-shirt', label: 'Oud T-shirt of schort (dat vies mag worden)', group: 'basis', basic: true },
   { id: 'schaar', label: 'Gewone schaar (voor jou)', group: 'basis', basic: true },
   { id: 'mes', label: 'Keukenmes (voor jou)', group: 'basis', basic: true },
+  { id: 'snijplank', label: 'Snijplank', group: 'basis', basic: true },
+  { id: 'spiegel', label: 'Spiegel', group: 'basis', basic: true },
+  { id: 'schoenen', label: 'Schoenen van het hele gezin', group: 'basis', basic: true },
   { id: 'oven', label: 'Oven', group: 'basis', basic: true },
   { id: 'vriezer', label: 'Vriezer', group: 'basis', basic: true },
   { id: 'koelkast', label: 'Koelkast', group: 'basis', basic: true },
   { id: 'kookplaat', label: 'Kookplaat of waterkoker', group: 'basis', basic: true },
   { id: 'dekens', label: 'Dekens, lakens en kussens', group: 'basis', basic: true },
   { id: 'stoelen', label: 'Stoelen en een tafel', group: 'basis', basic: true },
-  { id: 'muziek', label: 'Muziek (telefoon of speaker)', group: 'basis', basic: true },
+  { id: 'muziek', label: 'Muziek of luisterverhaal (telefoon of speaker)', group: 'basis', basic: true },
   { id: 'badkuip', label: 'Bad, douchebak of grote teil', group: 'basis', basic: true },
 ];
 
@@ -215,7 +231,7 @@ export const PRESETS = [
   { id: 'knutseldoos', label: 'Basis-knutseldoos', emoji: '🖍️', items: ['papier', 'gekleurd-papier', 'waskrijt', 'kleurpotloden', 'stiften', 'potlood', 'plakkaatverf', 'penselen', 'kinderschaar', 'lijmstift', 'knutsellijm', 'plakband', 'schilderstape', 'stickers'] },
   { id: 'keukenkastje', label: 'Gewoon keukenkastje', emoji: '🥫', items: ['bloem', 'zout', 'suiker', 'olie', 'boter', 'maizena', 'azijn', 'rijst', 'pasta', 'havermout', 'kruiden', 'melk', 'yoghurt', 'fruit', 'groente', 'brood', 'beleg', 'koekjes', 'hagelslag', 'eieren'] },
   { id: 'keukenla', label: 'Keukenla & kastjes', emoji: '🥄', items: ['zip-zakjes', 'huishoudfolie', 'aluminiumfolie', 'bakpapier', 'dienblad', 'ijsblokjesvorm', 'muffinvorm', 'vergiet', 'zeef', 'garde', 'plastic-bekers', 'glazen-pot', 'potjes', 'deegroller', 'uitsteekvormpjes', 'trechter', 'keukenpapier'] },
-  { id: 'badkamer', label: 'Badkamer & huishouden', emoji: '🧽', items: ['afwasmiddel', 'badschuim', 'watten', 'wattenstaafjes', 'sponsjes', 'wasknijpers', 'elastiekjes', 'rietjes', 'zaklamp', 'wasmand', 'pleisters', 'tandenborstel', 'conditioner', 'oud-laken'] },
+  { id: 'badkamer', label: 'Badkamer & huishouden', emoji: '🧽', items: ['borstels', 'opstapje', 'mandje', 'afwasmiddel', 'badschuim', 'watten', 'wattenstaafjes', 'sponsjes', 'wasknijpers', 'elastiekjes', 'rietjes', 'zaklamp', 'wasmand', 'pleisters', 'tandenborstel', 'conditioner', 'oud-laken'] },
   { id: 'recycle', label: 'Recyclebak', emoji: '♻️', items: ['wc-rollen', 'eierdoos', 'dozen', 'plastic-flesjes', 'doppen', 'bakjes', 'melkpak', 'verpakkingen', 'kranten', 'tijdschriften', 'karton'] },
-  { id: 'speelgoed', label: 'Speelgoedkist', emoji: '🧸', items: ['klein-speelgoed', 'speelgoedautos', 'duplo', 'bal', 'knuffels', 'badspeelgoed', 'poppen', 'speeldeeg'] },
+  { id: 'speelgoed', label: 'Speelgoedkist', emoji: '🧸', items: ['klein-speelgoed', 'speelgoedautos', 'duplo', 'bal', 'knuffels', 'badspeelgoed', 'poppen', 'speeldeeg', 'boeken', 'dobbelsteen', 'verkleedkleren', 'kinderservies'] },
 ];

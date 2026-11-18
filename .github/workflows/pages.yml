@@ -1,0 +1,44 @@
+name: Controleren en publiceren
+
+# - Bij elke pull request: de ideeënbibliotheek controleren.
+# - Bij elke push naar main: controleren en de site naar de gh-pages-branch zetten.
+#   GitHub Pages serveert die branch op https://constantdynamics.github.io/groteknut/
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  controleren:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code ophalen
+        uses: actions/checkout@v4
+      - name: Node klaarzetten
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Ideeën controleren
+        run: node tools/validate.mjs
+
+  publiceren:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: controleren
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: gh-pages
+      cancel-in-progress: true
+    steps:
+      - name: Code ophalen
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Naar gh-pages zetten
+        run: git push --force origin HEAD:gh-pages

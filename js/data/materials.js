@@ -141,6 +141,9 @@ export const MATERIALS = [
   { id: 'borstels', label: 'Haarborstels en kammen', group: 'huis', alt: 'een schone, oude tandenborstel' },
   { id: 'opstapje', label: 'Opstapje of stevig krukje', group: 'huis', alt: 'een stevige stoel (blijf erbij)' },
   { id: 'mandje', label: 'Mandje of lage bak', group: 'huis', alt: 'een schoenendoos zonder deksel' },
+  { id: 'stoffer-blik', label: 'Stoffer en blik of een kleine bezem', group: 'huis', alt: 'een droog doekje of een handveger' },
+  { id: 'koptelefoon', label: 'Koptelefoon voor kinderen (met volumebegrenzer)', group: 'huis', alt: 'zacht een luisterverhaal via een speaker' },
+  { id: 'stempelkussen', label: 'Stempelkussen (afwasbare inkt)', group: 'tekenen', alt: 'een sponsje met een beetje plakkaatverf' },
 
   // Recyclebak & restjes
   { id: 'wc-rollen', label: 'Wc-rolletjes en keukenrolkokers', group: 'recycle', alt: 'opgerold karton met plakband' },
@@ -212,6 +215,7 @@ export const MATERIALS = [
   { id: 'mes', label: 'Keukenmes (voor jou)', group: 'basis', basic: true },
   { id: 'snijplank', label: 'Snijplank', group: 'basis', basic: true },
   { id: 'spiegel', label: 'Spiegel', group: 'basis', basic: true },
+  { id: 'schoenen', label: 'Schoenen van het hele gezin', group: 'basis', basic: true },
   { id: 'oven', label: 'Oven', group: 'basis', basic: true },
   { id: 'vriezer', label: 'Vriezer', group: 'basis', basic: true },
   { id: 'koelkast', label: 'Koelkast', group: 'basis', basic: true },

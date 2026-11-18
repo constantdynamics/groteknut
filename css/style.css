@@ -618,3 +618,94 @@ main { max-width: 1120px; margin: 0 auto; padding: 12px 16px calc(var(--tabbar-h
   .switch-track::after { width: 16px; height: 16px; }
   .switch[aria-checked='true'] .switch-track::after { transform: translateX(16px); }
 }
+
+/* ---------- Ronde 3: samen spelen, weekplan, oppaskaart ---------- */
+.linkish { border: 0; background: none; padding: 0; font: inherit; color: var(--primary); font-weight: 850; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; text-align: left; }
+.panel.roles { background: var(--c-zintuigen); border-color: transparent; }
+.panel.roles .age-tip { background: var(--surface); border-color: transparent; }
+.panel.roles > .muted { margin-bottom: 10px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.plan-banner { display: flex; align-items: center; gap: 14px; margin-top: 16px; padding: 14px 16px; border-radius: var(--radius); background: linear-gradient(135deg, var(--c-water), var(--c-proefjes)); color: var(--ink); text-decoration: none; border: 1px solid var(--line); box-shadow: var(--shadow-sm); transition: transform .15s, box-shadow .15s; }
+.plan-banner:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.plan-banner .e { font-size: 2rem; line-height: 1; flex: none; }
+.plan-banner strong { display: block; font-size: 1.05rem; font-weight: 900; }
+.plan-banner small { display: block; color: var(--ink-2); font-weight: 700; font-size: .9rem; }
+.plan-banner .go { margin-left: auto; font-size: 1.7rem; font-weight: 900; color: var(--ink-2); line-height: 1; }
+
+.week-bar p + p { margin-top: 6px; }
+.week-bar .btn-row { margin-top: 12px; }
+.week { list-style: none; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); margin: 18px 0; }
+.day { display: grid; gap: 8px; align-content: start; }
+.day-head { display: flex; align-items: baseline; gap: 4px 10px; flex-wrap: wrap; }
+.day-name { font-weight: 900; font-size: 1.12rem; }
+.day-date { color: var(--ink-3); font-weight: 800; font-size: .9rem; }
+.day.is-today .day-name { color: var(--primary); }
+.day.is-today .card { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-soft), var(--shadow-sm); }
+.day.is-past { opacity: .62; }
+.day-done { margin-left: auto; font-size: .82rem; font-weight: 900; color: var(--good); background: var(--good-soft); padding: 2px 10px; border-radius: 999px; }
+.day-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.day-actions .btn { flex: 1 1 auto; }
+.week-mats { list-style: none; padding: 0; display: grid; gap: 6px; margin-top: 10px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.week-mats li { padding: 8px 12px; border-radius: var(--radius-sm); background: var(--surface-2); border: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.week-mats .muted { font-size: .84rem; font-weight: 800; }
+
+.pick-list { list-style: none; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+.pick { width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--surface); color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
+.pick[aria-pressed='true'] { border-color: var(--good); background: var(--good-soft); }
+.pick[aria-pressed='true'] .mat-check { background: var(--good); border-color: var(--good); color: #fff; }
+.pick .mat-check { flex: none; margin: 0; }
+.pick .e { font-size: 1.5rem; line-height: 1; flex: none; }
+.pick .t { display: grid; min-width: 0; }
+.pick .mat-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pick small { color: var(--ink-3); font-weight: 700; font-size: .82rem; }
+
+.sheets { display: grid; gap: 22px; margin-top: 14px; }
+.sheet { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 22px 24px; box-shadow: var(--shadow-md); width: 100%; max-width: 860px; margin: 0 auto; font-size: .95rem; line-height: 1.45; }
+.sheet-head { display: flex; gap: 14px; align-items: flex-start; padding-bottom: 12px; border-bottom: 3px solid var(--cat); }
+.sheet-emoji { font-size: 2.3rem; width: 62px; height: 62px; border-radius: 16px; background: var(--cat); display: grid; place-items: center; flex: none; line-height: 1; }
+.sheet-cat { font-size: .72rem; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.sheet h2 { font-size: 1.45rem; line-height: 1.15; margin: 2px 0 4px; }
+.sheet-sum { color: var(--ink-2); }
+.sheet-facts { display: flex; flex-wrap: wrap; gap: 6px 22px; padding: 10px 0; border-bottom: 1px solid var(--line); font-weight: 750; }
+.sheet-facts b { display: block; font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); font-weight: 850; }
+.sheet-cols { columns: 2 280px; column-gap: 26px; margin-top: 12px; }
+.sheet-cols section { break-inside: avoid; margin-bottom: 12px; }
+.sheet h3 { font-size: 1rem; margin-bottom: 4px; font-weight: 900; }
+.sheet ul, .sheet ol { padding-left: 20px; display: grid; gap: 3px; }
+.sheet p + p { margin-top: 4px; }
+.sheet-mats { list-style: none; padding-left: 0 !important; }
+.sheet-mats li { display: flex; gap: 8px; align-items: flex-start; }
+.sheet-mats .box { width: 13px; height: 13px; border: 2px solid var(--ink-2); border-radius: 3px; flex: none; margin-top: .3em; }
+.sheet-mats .note, .sheet-small { color: var(--ink-2); font-size: .9em; }
+.sheet-small { margin-top: 6px; }
+.sheet-warn { background: var(--warn-bg); color: var(--warn-ink); border: 1px solid var(--warn-line); border-radius: 10px; padding: 8px 12px; }
+.sheet-say { list-style: none; padding-left: 0 !important; }
+.sheet-say li { font-style: italic; }
+.sheet-foot { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--line); font-size: .76rem; color: var(--ink-3); text-align: center; }
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+  .plan-banner, .day-actions { display: none !important; }
+  .week { grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+  .day { break-inside: avoid; }
+  .day.is-past { opacity: 1; }
+  .week .card, .week-mats li { box-shadow: none; }
+  .sheets { display: block; margin: 0; }
+  .sheet { break-after: page; break-inside: avoid; box-shadow: none; border: 0; border-radius: 0; padding: 0; max-width: none; font-size: 10pt; line-height: 1.36; }
+  .sheet:last-child { break-after: auto; }
+  .sheet.dense { font-size: 9.3pt; line-height: 1.32; }
+  .sheet.denser { font-size: 8.6pt; line-height: 1.3; }
+  .sheet h2 { font-size: 17pt; }
+  .sheet-emoji, .sheet-head { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .sheet-warn { background: #fff; color: #000; border: 1.5px solid #000; }
+  .sheet-cols { columns: 2; }
+}
+/* Onzichtbare printversie om te meten of een oppaskaart op één A4 past (zelfde maten als @media print hierboven). */
+.sheet-sim { position: absolute; left: -10000px; top: 0; width: 180mm; visibility: hidden; pointer-events: none; }
+.sheet.print-sim { box-shadow: none; border: 0; border-radius: 0; padding: 0; margin: 0; max-width: none; font-size: 10pt; line-height: 1.36; }
+.sheet.print-sim.dense { font-size: 9.3pt; line-height: 1.32; }
+.sheet.print-sim.denser { font-size: 8.6pt; line-height: 1.3; }
+.sheet.print-sim h2 { font-size: 17pt; }
+.sheet.print-sim .sheet-cols { columns: 2; }
+.sheet.print-sim .sheet-warn { border: 1.5px solid #000; }

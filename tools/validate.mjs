@@ -21,7 +21,7 @@ const ALLOWED_KEYS = new Set([
   'id', 'title', 'emoji', 'category', 'summary', 'ageMin', 'ageMax', 'mess', 'wet', 'dirty',
   'prepMinutes', 'duration', 'supervision', 'soloFrom', 'cleanupMinutes', 'noise', 'energy', 'places',
   'materials', 'optional', 'steps', 'ageTips', 'safety', 'say', 'words', 'learn', 'tips', 'extenders',
-  'variations', 'themes', 'canStay', 'stayTips', 'pinQuery',
+  'variations', 'themes', 'canStay', 'stayTips', 'pinQuery', 'roles',
 ]);
 
 const isStr = (v, max = 10000) => typeof v === 'string' && v.trim().length > 0 && v.length <= max;
@@ -103,6 +103,10 @@ export function validateList(list, { file = 'lijst', seen = new Map() } = {}) {
     if (a.canStay && !isStr(a.stayTips, 400)) err('stayTips is verplicht als canStay true is (max 400 tekens)');
     if (!a.canStay && a.stayTips !== undefined) warn('stayTips zonder canStay');
     if (!isStr(a.pinQuery, 60)) err('pinQuery ontbreekt (max 60 tekens)');
+    if (a.roles !== undefined) {
+      if (!a.roles || !isStr(a.roles.young, 320) || !isStr(a.roles.old, 320)) err('roles: { young, old } met elk max 320 tekens');
+      if (a.ageMin > 2 || a.ageMax < 4) warn('roles (broertjes en zusjes) hoort bij een leeftijdsrange van ≤ 2 tot ≥ 4 jaar');
+    }
 
     // Inhoudelijke checks
     const safetyText = (a.safety || []).join(' ').toLowerCase();

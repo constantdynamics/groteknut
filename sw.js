@@ -1,5 +1,5 @@
 // Service worker: zorgt dat Groteknut ook offline werkt.
-const VERSION = 'groteknut-v2';
+const VERSION = 'groteknut-v3';
 const ASSETS = [
   './',
   './index.html',

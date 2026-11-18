@@ -55,7 +55,7 @@ for (const a of ACTIVITIES) {
     ...mats.map((m) => `${MAT[m.id]?.label ?? ''} ${m.note ?? ''}`),
     ...a.themes.map((t) => THEME[t]?.label), ...a.words, ...a.learn.map((l) => LRN[l]?.label),
   ].join(' '));
-  a._full = normalize([a._q, ...a.steps, ...a.tips, ...a.variations, ...(a.extenders || [])].join(' '));
+  a._full = normalize([a._q, ...a.steps, ...a.tips, ...a.variations, ...(a.extenders || []), a.roles?.young, a.roles?.old].join(' '));
 }
 
 // Welke recepten horen bij welke ideeën?
@@ -91,7 +91,7 @@ const hasInventory = (s = store.get()) => Object.keys(s.have).some((k) => s.have
 const missingOf = (a, have = store.get().have) => a.materials.filter((m) => MAT[m.id] && !MAT[m.id].basic && !have[m.id]);
 const shortLabel = (id) => (MAT[id]?.label ?? id).replace(/\s*\(.*?\)/g, '').split(/ of |, |: /)[0];
 const ARRAY_KEYS = ['ages', 'cats', 'themes', 'learn', 'places'];
-const BOOL_KEYS = ['wet', 'dirty', 'solo', 'stay'];
+const BOOL_KEYS = ['wet', 'dirty', 'solo', 'stay', 'sib'];
 const NUM_KEYS = ['mess', 'prepMax', 'cleanMax', 'noiseMax'];
 
 // Speeltijd op een leeftijd (lineair tussen ageMin en ageMax, afgerond op 5).
@@ -107,6 +107,8 @@ const isLongFor = (a, s) => (s.ages.length
   ? s.ages.every((g) => durAt(a, g) >= LONG_PLAY[g])
   : a.duration[0] >= LONG_PLAY[a.ageMin] && a.duration[1] >= LONG_PLAY[a.ageMax]);
 const canSolo = (a, s) => a.soloFrom != null && (!s.ages.length || s.ages.every((g) => g >= a.soloFrom));
+// Kinderen van verschillende leeftijd tegelijk (bijv. een dreumes en een kleuter)?
+const agesSpread = (s) => s.ages.length >= 2 && Math.max(...s.ages) - Math.min(...s.ages) >= 2;
 function durLabel(a, s = store.get()) {
   if (s.ages.length === 1) return minutes(durAt(a, s.ages[0]));
   const [x, y] = a.duration;
@@ -132,6 +134,7 @@ function matches(a, s, ignore = []) {
   if (s.places.length && !a.places.some((p) => s.places.includes(p))) return false;
   if (s.stay && !a.canStay) return false;
   if (s.solo && !canSolo(a, s)) return false;
+  if (s.sib && !a.roles) return false;
   if (s.stock !== 'all') {
     const n = missingOf(a, s.have).length;
     if (s.stock === 'now' && n > 0) return false;
@@ -206,7 +209,7 @@ function isOn(key, value, s = store.get()) {
 }
 
 const moreCount = (s) => s.themes.length + s.learn.length + s.places.length + (s.dur !== 'any') + (s.prepMax !== 999)
-  + (s.cleanMax !== 999) + (s.noiseMax !== 3) + (s.energy !== 'any') + (s.stay ? 1 : 0) + (s.solo ? 1 : 0);
+  + (s.cleanMax !== 999) + (s.noiseMax !== 3) + (s.energy !== 'any') + (s.stay ? 1 : 0) + (s.solo ? 1 : 0) + (s.sib ? 1 : 0);
 const filtersActive = (s) =>
   s.ages.length || s.mess !== 3 || !s.wet || !s.dirty || s.stock !== 'all' || s.cats.length || moreCount(s) || s.q;
 
@@ -240,6 +243,7 @@ function card(a, { compact = false } = {}) {
         ${a.dirty ? '<span class="pill" title="Kan vlekken geven">🎨<span class="sr-only">kan vlekken</span></span>' : ''}
         ${a.soloFrom != null ? `<span class="pill" title="Kan (bijna) zelfstandig vanaf ${a.soloFrom} jaar">🙂 zelf ${a.soloFrom}+</span>` : ''}
         ${a.canStay ? '<span class="pill" title="Kan blijven staan om later verder te spelen">📌<span class="sr-only">kan blijven staan</span></span>' : ''}
+        ${a.roles ? '<span class="pill" title="Samen met een broertje of zusje: een rol voor jong én oud">👫<span class="sr-only">met broertje of zusje</span></span>' : ''}
       </div>
       ${stock}
     </div>
@@ -286,6 +290,7 @@ function viewDiscover() {
         <div class="chips" role="group" aria-labelledby="lbl-age">
           ${[1, 2, 3, 4, 5].map((n) => `<button class="chip chip-age" type="button" data-action="filter" data-key="ages" data-value="${n}" aria-pressed="false" aria-label="${n} jaar">${n}</button>`).join('')}
         </div>
+        <p class="hint" id="sib-hint" hidden>👫 Meer kinderen tegelijk? <button class="linkish" type="button" data-action="sib-on">Toon ideeën met een rol voor jong én oud</button></p>
       </div>
       <div class="filter-row">
         <span class="filter-label" id="lbl-mess">Hoeveel rommel mag het zijn?</span>
@@ -337,6 +342,10 @@ function viewDiscover() {
           <div class="chips" role="group" aria-labelledby="lbl-place">${PLACES.map((p) => chip('places', p.id, `${p.emoji} ${esc(p.label)}`)).join('')}</div>
         </div>
         <div class="filter-row">
+          <span class="filter-label">Met broertje of zusje</span>
+          <div class="switches">${sw('sib', '👫 Broertjes & zusjes', 'een rol voor jong én oud')}</div>
+        </div>
+        <div class="filter-row">
           <span class="filter-label">Zelfstandig en laten staan</span>
           <div class="switches">${sw('solo', '🙂 Kan (bijna) zelf', 'jij blijft in de buurt')}${sw('stay', '📌 Kan blijven staan', 'morgen verder spelen')}</div>
         </div>
@@ -356,10 +365,11 @@ function viewDiscover() {
         </div>
         <button class="btn btn-primary" type="button" data-action="surprise"><span class="dice" aria-hidden="true">🎲</span> Verras me!</button>
       </div>
-      <p class="hint more-hint" id="more-hint">Onder ‘Meer filters’: speeltijd, voorbereiding, opruimen, geluid, energie, plek en zelfstandig.</p>
+      <p class="hint more-hint" id="more-hint">Onder ‘Meer filters’: speeltijd, voorbereiding, opruimen, geluid, energie, plek, broertjes & zusjes en zelfstandig.</p>
     </div>
   </section>
   <div id="welcome-slot"></div>
+  ${planBanner()}
   <p class="season" id="season-slot"></p>
   <section class="section" aria-labelledby="cats-title">
     <div class="section-title"><h2 id="cats-title">Kies een soort</h2></div>
@@ -387,6 +397,8 @@ function viewDiscover() {
     if (mc) { mc.hidden = !n; mc.textContent = n; }
     const rb = $('#reset-btn');
     if (rb) rb.hidden = !filtersActive(st);
+    const sh = $('#sib-hint');
+    if (sh) sh.hidden = !agesSpread(st) || st.sib;
     $('#search-wrap')?.classList.toggle('has-value', !!st.q);
 
     const hint = $('#stock-hint');
@@ -468,6 +480,10 @@ function rowsHtml(s, base) {
   if (s.mess > 1 || s.wet || s.dirty) rows.push({ title: '✨ Bijna geen rommel', sub: 'Schoon en droog', list: base.filter((a) => a.mess === 1 && !a.wet && !a.dirty) });
   if (!s.ages.length || s.ages.includes(1)) rows.push({ title: '🐣 Voor de allerkleinsten', sub: 'Al vanaf 1 jaar', list: base.filter((a) => a.ageMin === 1) });
   if (!s.solo) rows.push({ title: '🙂 Even zelf bezig', sub: 'Jij kunt in de buurt blijven', list: sortList(base.filter((a) => canSolo(a, s)), { ...s, sort: 'solo' }) });
+  if (!s.sib && s.ages.length !== 1) {
+    const row = { title: '👫 Samen met broertje of zusje', sub: 'Een rol voor de jongste én de oudste', list: base.filter((a) => a.roles) };
+    if (agesSpread(s)) rows.unshift(row); else rows.push(row);
+  }
   return rows
     .filter((r) => r.list.length >= 3)
     .map((r) => `<section class="section">
@@ -524,6 +540,7 @@ function viewActivity(id) {
     `${ENERGY_BY[a.energy].emoji} ${ENERGY_BY[a.energy].label.toLowerCase()}`,
     ...a.places.map((p) => `${PLACE[p].emoji} ${PLACE[p].label.toLowerCase()}`),
     ...(a.canStay ? ['📌 kan blijven staan'] : []),
+    ...(a.roles ? ['👫 samen met broertje of zusje'] : []),
   ];
 
   const related = ACTIVITIES
@@ -569,30 +586,38 @@ function viewActivity(id) {
           <ol class="steps">${a.steps.map((st, i) => `<li data-action="step" data-id="${a.id}" data-i="${i}" role="checkbox" aria-checked="${steps.has(i)}" tabindex="0" class="${steps.has(i) ? 'is-done' : ''}">${esc(st)}</li>`).join('')}</ol>
           <p class="hint">Tik op een stap om hem af te vinken.</p>
         </section>
-        ${a.extenders.length ? `<section class="panel extend" style="--o:4">
+        ${a.roles ? `<section class="panel roles" style="--o:4">
+          <h2><span class="ic" aria-hidden="true">👫</span> Samen met broertje of zusje</h2>
+          <p class="muted">Ieder een eigen rol, zodat jong en oud allebei lekker bezig zijn.</p>
+          <div class="age-tips">
+            <div class="age-tip"><h3>🐣 De jongste</h3><p>${esc(a.roles.young)}</p></div>
+            <div class="age-tip"><h3>🦁 De oudste</h3><p>${esc(a.roles.old)}</p></div>
+          </div>
+        </section>` : ''}
+        ${a.extenders.length ? `<section class="panel extend" style="--o:5">
           <h2><span class="ic" aria-hidden="true">⏳</span> Nog langer bezig?</h2>
           <p class="muted">Zakt de aandacht weg? Probeer een van deze verlengers.</p>
           <ul class="extenders">${a.extenders.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
         </section>` : ''}
-        <section class="panel" style="--o:6">
+        <section class="panel" style="--o:7">
           <h2><span class="ic" aria-hidden="true">🌱</span> Makkelijker of moeilijker</h2>
           <div class="age-tips">
             <div class="age-tip"><h3>🐣 Makkelijker <span class="muted">(${a.ageMin} jaar)</span></h3><p>${esc(a.ageTips.young)}</p></div>
             <div class="age-tip"><h3>🚀 Uitdagender <span class="muted">(${a.ageMax} jaar)</span></h3><p>${esc(a.ageTips.old)}</p></div>
           </div>
         </section>
-        <section class="panel" style="--o:7">
+        <section class="panel" style="--o:8">
           <h2><span class="ic" aria-hidden="true">💬</span> Wat kun je zeggen?</h2>
           <div class="bubbles">${a.say.map((x) => `<p class="bubble">“${esc(x)}”</p>`).join('')}</div>
           <p class="subhead">Woordjes om te oefenen</p>
           <div class="words">${a.words.map((w) => `<span class="word">${esc(w)}</span>`).join('')}</div>
           <p class="hint"><a href="#/gids/praten">Meer over praten tijdens het knutselen →</a></p>
         </section>
-        <section class="panel" style="--o:9">
+        <section class="panel" style="--o:10">
           <h2><span class="ic" aria-hidden="true">💡</span> Handige tips</h2>
           <ul class="bullets">${a.tips.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
         </section>
-        <section class="panel" style="--o:10">
+        <section class="panel" style="--o:11">
           <h2><span class="ic" aria-hidden="true">🌈</span> Meer inspiratie</h2>
           <ul class="inspo stack">${a.variations.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
           <p class="hint"><a href="${pinUrl}" target="_blank" rel="noopener">Bekijk voorbeelden op Pinterest →</a></p>
@@ -601,13 +626,13 @@ function viewActivity(id) {
       <aside class="detail-side">
         ${materialsPanel(a)}
         ${recipes.length ? `<section class="panel" style="--o:2"><h2><span class="ic" aria-hidden="true">🥣</span> Zelf maken</h2><div class="stack">${recipes.map((r) => `<a class="tile" href="#/recept/${r.id}"><span class="e">${r.emoji}</span><span><h3>${esc(r.title)}</h3><p>Recept · ${minutes(r.minutes)}</p></span></a>`).join('')}</div></section>` : ''}
-        <section class="panel safety" style="--o:5">
+        <section class="panel safety" style="--o:6">
           <h2><span class="ic" aria-hidden="true">⚠️</span> Let op</h2>
           <ul>${a.safety.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
           <p class="hint"><a href="#/gids/veiligheid">Meer over veilig knutselen →</a></p>
         </section>
-        ${a.canStay ? `<section class="panel stay" style="--o:8"><h2><span class="ic" aria-hidden="true">📌</span> Laten staan voor morgen</h2><p>${esc(a.stayTips)}</p></section>` : ''}
-        <section class="panel" style="--o:11" id="photos-panel">
+        ${a.canStay ? `<section class="panel stay" style="--o:9"><h2><span class="ic" aria-hidden="true">📌</span> Laten staan voor morgen</h2><p>${esc(a.stayTips)}</p></section>` : ''}
+        <section class="panel" style="--o:12" id="photos-panel">
           <h2><span class="ic" aria-hidden="true">📸</span> Jullie foto’s</h2>
           ${photos.length
             ? `<div class="photo-grid">${photos.map((p) => `<button class="photo-thumb" type="button" data-action="photo-open" data-id="${a.id}" data-photo="${p.id}" aria-label="Foto van ${shortDate(p.created)} bekijken"><img src="${p.url}" alt="" loading="lazy"></button>`).join('')}</div>`
@@ -793,7 +818,10 @@ function viewSaved(tab = 'favorieten') {
   if (tab === 'favorieten') {
     const favMissing = new Set(favIds.flatMap((id) => missingOf(ACT[id], s.have).map((m) => m.id)));
     body = favIds.length
-      ? `${favMissing.size && hasInventory(s) ? `<div class="btn-row" style="margin-bottom:14px"><button class="btn btn-soft" type="button" data-action="shop-favs">🛒 Zet wat ik mis op mijn lijstje (${favMissing.size})</button></div>` : ''}
+      ? `<div class="btn-row" style="margin-bottom:14px">
+           <a class="btn btn-soft" href="#/oppaskaart">🧸 Oppaskaart printen</a>
+           ${favMissing.size && hasInventory(s) ? `<button class="btn btn-soft" type="button" data-action="shop-favs">🛒 Zet wat ik mis op mijn lijstje (${favMissing.size})</button>` : ''}
+         </div>
          <div class="grid">${favIds.map((id) => card(ACT[id])).join('')}</div>`
       : emptyBox('🤍', 'Nog niets bewaard', 'Tik op het hartje bij een idee om het hier te bewaren. Handig voor een regenachtige middag!', '<a class="btn btn-primary" href="#/">Ideeën ontdekken</a>');
   } else if (tab === 'lijstje') {
@@ -859,6 +887,344 @@ function viewSaved(tab = 'favorieten') {
         store.set((st) => ({ custom: [...st.custom, { id: Date.now().toString(36), text, done: false }] }));
         setTimeout(() => $('#custom-text')?.focus(), 0);
       });
+    },
+  };
+}
+
+/* ================= Weekplan ================= */
+
+const DAY_NAMES = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
+const DAY_SHORT = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
+const MONTHS_SHORT = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+const PLAN_KEYS = Object.keys(DEFAULT_FILTERS).filter((k) => k !== 'q' && k !== 'sort');
+const isoDay = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const fromIso = (k) => { const [y, m, d] = String(k).split('-').map(Number); return new Date(y, (m || 1) - 1, d || 1); };
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const daysBetween = (a, b) => Math.round((b - a) / 864e5);
+const dateShort = (d) => `${DAY_SHORT[d.getDay()]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
+const listNl = (arr) => (arr.length < 2 ? arr.join('') : `${arr.slice(0, -1).join(', ')} en ${arr[arr.length - 1]}`);
+const filtersOf = (s) => JSON.parse(JSON.stringify(Object.fromEntries(PLAN_KEYS.map((k) => [k, s[k]]))));
+const sameFilters = (f, s) => JSON.stringify(filtersOf({ ...DEFAULT_FILTERS, ...f })) === JSON.stringify(filtersOf(s));
+
+// Korte omschrijving van de filters waarmee een plan is gemaakt.
+function filterLabel(f) {
+  f = { ...DEFAULT_FILTERS, ...f };
+  const p = [f.ages.length ? `${listNl([...f.ages].sort((x, y) => x - y).map(String))} jaar` : 'alle leeftijden'];
+  if (f.mess < 3) p.push(MESS_BY[f.mess].label.toLowerCase());
+  if (!f.wet) p.push('droog');
+  if (!f.dirty) p.push('zonder vlekken');
+  if (f.stock === 'now') p.push('alles in huis');
+  if (f.stock === 'one') p.push('mist hooguit 1 ding');
+  if (f.cats.length) p.push(f.cats.map((c) => CAT[c]?.label.toLowerCase()).filter(Boolean).join(', '));
+  if (f.themes.length) p.push(f.themes.map((t) => THEME[t]?.label).filter(Boolean).join(', '));
+  if (f.learn.length) p.push(f.learn.map((l) => LRN[l]?.label.toLowerCase()).filter(Boolean).join(', '));
+  if (f.dur === 'long') p.push('lang zoet');
+  else if (f.dur === 'short') p.push('kort');
+  else if (/^\d+$/.test(f.dur)) p.push(`minstens ${f.dur} min`);
+  if (f.prepMax !== 999) p.push(f.prepMax <= 2 ? 'bijna niets klaarzetten' : `hooguit ${f.prepMax} min klaarzetten`);
+  if (f.cleanMax !== 999) p.push(`hooguit ${f.cleanMax} min opruimen`);
+  if (f.noiseMax === 1) p.push('stil');
+  if (f.noiseMax === 2) p.push('geen lawaai');
+  if (f.energy === 'rustig') p.push('rustig');
+  if (f.energy === 'actief') p.push('bewegen');
+  if (f.places.length) p.push(f.places.map((x) => PLACE[x]?.label.toLowerCase()).filter(Boolean).join(', '));
+  if (f.solo) p.push('zelfstandig');
+  if (f.stay) p.push('kan blijven staan');
+  if (f.sib) p.push('broertjes & zusjes');
+  return p.join(' · ');
+}
+
+// Kandidaten: eerst wat precies bij de filters past, daarna (als reserve) alles wat qua leeftijd, rommel, nat en vies mag.
+function planPool(f) {
+  const st = { ...store.get(), ...DEFAULT_FILTERS, ...f, q: '' };
+  const strictList = ACTIVITIES.filter((a) => matches(a, st));
+  const strict = new Set(strictList.map((a) => a.id));
+  const base = { ...st, ...DEFAULT_FILTERS, ages: st.ages, mess: st.mess, wet: st.wet, dirty: st.dirty };
+  const loose = ACTIVITIES.filter((a) => !strict.has(a.id) && matches(a, base));
+  return { st, strict, list: [...strictList, ...loose], skip: new Set() };
+}
+
+// Voorkeur: lang zoet, weinig klaarzetten, in het seizoen, spullen in huis, favoriet en nog niet gedaan.
+function planScore(a, st, seed) {
+  const inv = hasInventory(st);
+  const miss = inv ? missingOf(a, st.have).length : 0;
+  return (isLongFor(a, st) ? 3 : 0)
+    + (a.prepMinutes <= 5 ? 2 : 0)
+    + (a.themes.some((t) => ACTIVE_IDS.has(t)) ? 1 : 0)
+    + (inv ? (miss === 0 ? 1.5 : miss === 1 ? 0.5 : -0.5 * miss) : 0)
+    + (st.favs[a.id] ? 1 : 0)
+    + ((st.done[a.id] || []).length ? 0 : 0.5)
+    + (hashSeed(`${a.id}:${seed}`) % 1000) / 400; // 0–2,5: elk plan anders
+}
+
+function pickIdea(pool, taken, seed, neighbours = []) {
+  const cats = {};
+  taken.forEach((id) => { const c = ACT[id]?.category; if (c) cats[c] = (cats[c] || 0) + 1; });
+  const messyNext = neighbours.some((id) => ACT[id]?.mess === 3);
+  let best = null;
+  let bestScore = -Infinity;
+  for (const a of pool.list) {
+    if (taken.includes(a.id) || pool.skip.has(a.id)) continue;
+    const sc = planScore(a, pool.st, seed)
+      - (cats[a.category] || 0) * 2.2 // elke dag een andere soort
+      - (messyNext && a.mess === 3 ? 1.2 : 0) // niet twee kliederdagen achter elkaar
+      - (pool.strict.has(a.id) ? 0 : 8); // reserve alleen als het echt moet
+    if (sc > bestScore) { best = a; bestScore = sc; }
+  }
+  return best;
+}
+
+function makePlan(f = filtersOf(store.get())) {
+  const seed = Math.random().toString(36).slice(2, 8);
+  const pool = planPool(f);
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const a = pickIdea(pool, days, seed, [days[i - 1]]);
+    if (!a) break;
+    days.push(a.id);
+  }
+  return { start: isoDay(), seed, days, skip: [], done: {}, filters: f, made: Date.now() };
+}
+
+function currentPlan() {
+  const s = store.get();
+  let w = s.week;
+  const t0 = fromIso(isoDay());
+  const age = w?.start ? daysBetween(fromIso(w.start), t0) : -1;
+  let expired = false;
+  if (!w || !Array.isArray(w.days) || !w.days.length || age < 0 || age > 6) {
+    expired = !!w;
+    w = makePlan(filtersOf(s));
+    store.set({ week: w }, { silent: true });
+  } else if (w.days.some((id) => !ACT[id])) {
+    // Een idee bestaat niet meer: vervang het stilletjes.
+    const pool = planPool(w.filters);
+    const days = [...w.days];
+    days.forEach((id, i) => { if (!ACT[id]) days[i] = pickIdea(pool, days, w.seed, [days[i - 1], days[i + 1]])?.id; });
+    w = { ...w, days: days.filter(Boolean) };
+    store.set({ week: w }, { silent: true });
+  }
+  return { w, todayIdx: daysBetween(fromIso(w.start), t0), expired };
+}
+
+function swapDay(i) {
+  const w = store.get().week;
+  if (!w || !w.days[i]) return;
+  const pool = planPool(w.filters);
+  const others = w.days.filter((_, j) => j !== i);
+  const neighbours = [w.days[i - 1], w.days[i + 1]];
+  pool.skip = new Set([...(w.skip || []), w.days[i]]);
+  let a = pickIdea(pool, others, w.seed, neighbours);
+  if (!a) { // alles al eens langsgekomen: opnieuw beginnen
+    pool.skip = new Set([w.days[i]]);
+    a = pickIdea(pool, others, w.seed, neighbours);
+  }
+  if (!a) { toast('Geen ander idee gevonden met deze filters'); return; }
+  const days = [...w.days];
+  days[i] = a.id;
+  const done = { ...(w.done || {}) };
+  delete done[i];
+  store.set({ week: { ...w, days, done, skip: [...pool.skip] } });
+  toast(`🔄 Nieuw idee: ${a.title}`, { actions: [{ label: 'Terug', fn: () => store.set({ week: w }) }] });
+}
+
+function viewWeek() {
+  const { w, todayIdx, expired } = currentPlan();
+  const s = store.get();
+  if (expired) setTimeout(() => toast('📅 Nieuwe week, nieuw plan!'), 0);
+  const start = fromIso(w.start);
+  const changed = !sameFilters(w.filters, s);
+  const rel = (i, d) => {
+    if (i === todayIdx) return 'Vandaag';
+    if (i === todayIdx + 1) return 'Morgen';
+    if (i === todayIdx - 1) return 'Gisteren';
+    return DAY_NAMES[d.getDay()].replace(/^./, (c) => c.toUpperCase());
+  };
+  const days = w.days.map((id, i) => {
+    const a = ACT[id];
+    if (!a) return '';
+    const d = addDays(start, i);
+    const done = !!w.done?.[i];
+    return `<li class="day${i === todayIdx ? ' is-today' : ''}${i < todayIdx ? ' is-past' : ''}${done ? ' is-done' : ''}">
+      <div class="day-head"><span class="day-name">${rel(i, d)}</span><span class="day-date">${dateShort(d)}</span>${done ? '<span class="day-done">✓ gedaan</span>' : ''}</div>
+      ${card(a)}
+      <div class="day-actions no-print">
+        <button class="btn btn-small" type="button" data-action="week-swap" data-i="${i}" aria-label="Wissel het idee voor ${esc(rel(i, d).toLowerCase())}">🔄 Wissel</button>
+        <button class="btn btn-small btn-toggle" type="button" data-action="week-done" data-i="${i}" aria-pressed="${done}">${done ? '✅ Gedaan' : '☑️ Gedaan?'}</button>
+      </div>
+    </li>`;
+  }).join('');
+
+  // Spullen voor de hele week.
+  const ids = w.days.filter((id) => ACT[id]);
+  const need = [...new Set(ids.flatMap((id) => ACT[id].materials.map((m) => m.id)))].filter((mid) => MAT[mid] && !MAT[mid].basic);
+  const inv = hasInventory(s);
+  const miss = need.filter((mid) => !s.have[mid]);
+  const show = (inv ? miss : need).sort((x, y) => MAT[x].label.localeCompare(MAT[y].label, 'nl'));
+  const when = (mid) => ids.map((id, i) => (ACT[id].materials.some((m) => m.id === mid) ? DAY_SHORT[addDays(start, i).getDay()] : '')).filter(Boolean).join(', ');
+  const shop = `<section class="panel week-shop">
+      <h2><span class="ic" aria-hidden="true">🛒</span> Nodig deze week</h2>
+      ${inv
+        ? (miss.length ? `<p class="muted">Je mist ${plural(miss.length, 'ding', 'dingen')} voor deze week:</p>` : '<p>🎉 Je hebt alles in huis voor deze week!</p>')
+        : '<p class="muted">Dit heb je deze week nodig (gewone spullen als papier, schaar en pannen tellen we niet mee). <a href="#/spullen">Vink aan wat je hebt</a>, dan zie je alleen wat je mist.</p>'}
+      ${show.length ? `<ul class="week-mats">${show.map((mid) => `<li><span class="mat-name">${esc(MAT[mid].label)}</span> <span class="muted">${when(mid)}</span>${s.shop[mid] ? ' <span class="tag">✓ op lijstje</span>' : ''}</li>`).join('')}</ul>` : ''}
+      ${inv && miss.some((mid) => !s.shop[mid]) ? '<div class="btn-row no-print" style="margin-top:12px"><button class="btn btn-soft" type="button" data-action="week-shop">🛒 Zet op mijn lijstje</button></div>' : ''}
+    </section>`;
+
+  const html = `
+  <button class="btn btn-ghost back" type="button" data-action="back">${ICON.back} Terug</button>
+  <header class="page-head">
+    <h1 tabindex="-1">📅 Weekplan</h1>
+    <p>Een week binnen spelen: voor elke dag een idee, gekozen met jouw filters. Zo weinig mogelijk klaarzetten, zo lang mogelijk zoet en elke dag iets anders. Past een dag niet? Tik op ‘Wissel’.</p>
+  </header>
+  <section class="panel week-bar">
+    <p><strong>Gekozen voor:</strong> ${esc(filterLabel(w.filters))}</p>
+    ${changed ? '<p class="hint">Je filters zijn veranderd sinds je dit plan maakte.</p>' : ''}
+    ${!(w.filters.ages || []).length ? '<p class="hint">Tip: kies in Ontdek eerst de leeftijd van je kind (of kinderen), dan past het plan beter.</p>' : ''}
+    <div class="btn-row no-print">
+      <button class="btn btn-small${changed ? ' btn-primary' : ''}" type="button" data-action="week-new">🔄 Nieuw plan${changed ? ' met mijn filters' : ''}</button>
+      <a class="btn btn-small btn-ghost" href="#/" data-action="week-filters">⚙️ Filters aanpassen</a>
+    </div>
+  </section>
+  <ol class="week">${days}</ol>
+  ${need.length ? shop : ''}
+  <div class="btn-row section no-print">
+    <button class="btn" type="button" data-action="week-share">📤 Deel weekplan</button>
+    <button class="btn btn-ghost" type="button" data-action="print">🖨️ Print</button>
+  </div>`;
+  return { html, title: 'Weekplan', tab: 'ontdek', restoreScroll: true };
+}
+
+function planBanner() {
+  const w = store.get().week;
+  const t0 = fromIso(isoDay());
+  const i = w?.start ? daysBetween(fromIso(w.start), t0) : -1;
+  const today = i >= 0 && i < (w?.days?.length || 0) ? ACT[w.days[i]] : null;
+  return today
+    ? `<a class="plan-banner" href="#/week"><span class="e" aria-hidden="true">📅</span><span><strong>Jullie weekplan</strong><small>Vandaag: ${today.emoji} ${esc(today.title)}</small></span><span class="go" aria-hidden="true">›</span></a>`
+    : '<a class="plan-banner" href="#/week"><span class="e" aria-hidden="true">🌧️</span><span><strong>Regenachtige week?</strong><small>Maak een weekplan: elke dag een idee dat bij jullie past.</small></span><span class="go" aria-hidden="true">›</span></a>';
+}
+
+/* ================= Oppaskaart ================= */
+
+const SITE = 'constantdynamics.github.io/groteknut';
+const favList = (s) => Object.keys(s.favs).filter((id) => ACT[id]).sort((x, y) => s.favs[y] - s.favs[x]);
+const sitterIds = (s, favs = favList(s)) => (Array.isArray(s.sitter) ? favs.filter((id) => s.sitter.includes(id)) : favs.slice(0, 5));
+
+// Past een kaart op één A4? We meten elke kaart één keer in een onzichtbare ‘printversie’ en kiezen zo nodig een kleinere letter.
+const DENSITY = new Map();
+// A4 is 297 mm; min 2 × 12 mm marge blijft 273 mm. We rekenen met wat speling (262 mm hoog, 180 mm breed),
+// omdat niet elke browser of printer precies dezelfde marges gebruikt.
+const A4_HEIGHT = (262 * 96) / 25.4;
+function fitSheets() {
+  const sheets = $$('.sheet[data-id]', app);
+  const todo = sheets.filter((el) => !DENSITY.has(el.dataset.id));
+  if (todo.length) {
+    const box = document.createElement('div');
+    box.className = 'sheet-sim';
+    box.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(box);
+    for (const el of todo) {
+      let pick = 'denser';
+      for (const cls of ['', 'dense']) {
+        const c = el.cloneNode(true);
+        c.className = `sheet print-sim ${cls}`;
+        box.replaceChildren(c);
+        if (c.getBoundingClientRect().height <= A4_HEIGHT) { pick = cls; break; }
+      }
+      DENSITY.set(el.dataset.id, pick);
+    }
+    box.remove();
+  }
+  for (const el of sheets) {
+    el.classList.toggle('dense', DENSITY.get(el.dataset.id) === 'dense');
+    el.classList.toggle('denser', DENSITY.get(el.dataset.id) === 'denser');
+  }
+}
+
+function sheet(a) {
+  const sup = SUP_BY[a.supervision];
+  const [d0, d1] = a.duration;
+  const recipes = (ACT_RECIPES[a.id] || []).map((rid) => REC[rid]?.title).filter(Boolean);
+  const mats = a.materials.map((m) => `<li><span class="box" aria-hidden="true"></span><span>${esc(MAT[m.id]?.label ?? m.id)}${m.note ? ` <span class="note">(${esc(m.note)})</span>` : ''}</span></li>`).join('');
+  return `<article class="sheet ${DENSITY.get(a.id) || ''}" data-id="${a.id}" style="--cat:var(--c-${a.category})">
+    <header class="sheet-head">
+      <span class="sheet-emoji" aria-hidden="true">${a.emoji}</span>
+      <div>
+        <p class="sheet-cat">${esc(CAT[a.category].label)} · oppaskaart</p>
+        <h2>${esc(a.title)}</h2>
+        <p class="sheet-sum">${esc(a.summary)}</p>
+      </div>
+    </header>
+    <div class="sheet-facts">
+      <span><b>Leeftijd</b>${ageLabel(a.ageMin, a.ageMax)}</span>
+      <span><b>Speeltijd</b>${d0 === d1 ? minutes(d0) : `${d0}–${d1} min`}</span>
+      <span><b>Klaarzetten</b>${a.prepMinutes ? minutes(a.prepMinutes) : 'niets'}</span>
+      <span><b>Rommel</b>${esc(MESS_BY[a.mess].label)}${a.wet ? ', nat' : ''}${a.dirty ? ', vlekken' : ''}</span>
+      <span><b>Toezicht</b>${esc(sup.label)}</span>
+    </div>
+    <div class="sheet-cols">
+      <section><h3>🧺 Wat heb je nodig?</h3><ul class="sheet-mats">${mats}</ul>
+        ${a.optional?.length ? `<p class="sheet-small"><b>Handig, niet nodig:</b> ${esc(a.optional.map((m) => shortLabel(m.id)).join(', '))}</p>` : ''}
+        ${recipes.length ? `<p class="sheet-small"><b>Zelf maken:</b> ${esc(recipes.join(', '))} (recept in Groteknut)</p>` : ''}
+      </section>
+      <section><h3>📝 Zo doe je het</h3><ol class="sheet-steps">${a.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></section>
+      ${a.roles ? `<section><h3>👫 Met broertje of zusje</h3><p><b>De jongste:</b> ${esc(a.roles.young)}</p><p><b>De oudste:</b> ${esc(a.roles.old)}</p></section>` : ''}
+      <section class="sheet-warn"><h3>⚠️ Let op</h3><ul>${a.safety.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></section>
+      <section><h3>💬 Wat kun je zeggen?</h3><ul class="sheet-say">${a.say.slice(0, 4).map((x) => `<li>“${esc(x)}”</li>`).join('')}</ul>
+        <p class="sheet-small"><b>Woordjes:</b> ${esc(a.words.slice(0, 8).join(' · '))}</p></section>
+      ${a.extenders.length ? `<section><h3>⏳ Nog langer bezig?</h3><ul>${a.extenders.slice(0, 3).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></section>` : ''}
+      <section class="sheet-age"><h3>🌱 Makkelijker of moeilijker</h3><p><b>Makkelijker:</b> ${esc(a.ageTips.young)}</p><p><b>Uitdagender:</b> ${esc(a.ageTips.old)}</p></section>
+    </div>
+    <footer class="sheet-foot">Groteknut · knutselideeën voor 1 t/m 5 jaar · ${SITE}</footer>
+  </article>`;
+}
+
+function viewSitter() {
+  const s = store.get();
+  const favs = favList(s);
+  const chosen = sitterIds(s, favs);
+  const head = `
+  <button class="btn btn-ghost back" type="button" data-action="back">${ICON.back} Terug</button>
+  <header class="page-head no-print">
+    <h1 tabindex="-1">🧸 Oppaskaart</h1>
+    <p>Voor de oppas, opa of oma: per idee één A4 met wat je nodig hebt, hoe het gaat, waar je op let en wat je kunt zeggen. Kies welke favorieten je meegeeft.</p>
+  </header>`;
+  if (!favs.length) {
+    return {
+      html: `${head}${emptyBox('🤍', 'Nog geen favorieten', 'De oppaskaart maak je van je favorieten. Tik bij een paar ideeën op het hartje en kom dan terug.', '<a class="btn btn-primary" href="#/">Ideeën ontdekken</a>')}`,
+      title: 'Oppaskaart', tab: 'bewaard', restoreScroll: false,
+    };
+  }
+  const pick = favs.map((id) => {
+    const a = ACT[id];
+    const on = chosen.includes(id);
+    return `<li><button class="pick" type="button" data-action="sitter-toggle" data-id="${id}" aria-pressed="${on}">
+      <span class="mat-check" aria-hidden="true">✓</span><span class="e" aria-hidden="true">${a.emoji}</span>
+      <span class="t"><span class="mat-name">${esc(a.title)}</span><small>${ageLabel(a.ageMin, a.ageMax)} · ⏱ ${durLabel(a, s)}</small></span>
+    </button></li>`;
+  }).join('');
+  const printBtn = `<button class="btn btn-primary" type="button" data-action="print"${chosen.length ? '' : ' disabled'}>🖨️ Print ${chosen.length === 1 ? '1 pagina' : `${chosen.length} pagina’s`}</button>`;
+  const html = `${head}
+  <div class="btn-row no-print" style="margin-bottom:14px">${printBtn}</div>
+  <section class="panel no-print sitter-pick">
+    <div class="section-title"><h2>Welke ideeën?</h2><span class="muted">${chosen.length} van ${favs.length} gekozen</span></div>
+    <ul class="pick-list">${pick}</ul>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-small" type="button" data-action="sitter-all">Alles kiezen</button>
+      <button class="btn btn-small btn-ghost" type="button" data-action="sitter-none">Niets</button>
+    </div>
+  </section>
+  <div class="btn-row section no-print">${printBtn}</div>
+  <p class="hint">Tip: kies bij het printen ‘Opslaan als PDF’ om de kaart te mailen of te appen. Hieronder zie je hoe het eruitziet.</p>
+  ${chosen.length ? `<div class="sheets">${chosen.map((id) => sheet(ACT[id])).join('')}</div>` : emptyBox('🖨️', 'Nog niets gekozen', 'Vink hierboven aan welke ideeën op de oppaskaart moeten.')}`;
+  return {
+    html,
+    title: 'Oppaskaart',
+    tab: 'bewaard',
+    restoreScroll: true,
+    mount() {
+      if (document.fonts?.ready) document.fonts.ready.then(fitSheets); else fitSheets();
     },
   };
 }
@@ -980,6 +1346,8 @@ const ROUTES = [
   [/^#\/gids\/?$/, viewGuide],
   [/^#\/gids\/([\w-]+)$/, viewGuideSection],
   [/^#\/idee\/([\w-]+)$/, viewActivity],
+  [/^#\/week\/?$/, viewWeek],
+  [/^#\/oppaskaart\/?$/, viewSitter],
 ];
 let current = null;
 let depth = 0;
@@ -1235,6 +1603,72 @@ const ACTIONS = {
     $('#install')?.classList.remove('is-visible');
   },
   'modal-close': () => closeModal(),
+  'sib-on': () => {
+    store.set({ sib: true });
+    toast('👫 Alleen ideeën met een rol voor jong én oud', { actions: [{ label: 'Uitzetten', fn: () => store.set({ sib: false }) }] });
+  },
+  'week-swap': (el) => swapDay(Number(el.dataset.i)),
+  'week-done': (el) => {
+    const s = store.get();
+    const w = s.week;
+    const i = Number(el.dataset.i);
+    const id = w?.days?.[i];
+    if (!id) return;
+    const wd = { ...(w.done || {}) };
+    const done = { ...s.done };
+    if (wd[i]) {
+      delete wd[i];
+      const list = [...(done[id] || [])];
+      list.pop();
+      if (list.length) done[id] = list; else delete done[id];
+      store.set({ week: { ...w, done: wd }, done });
+      return;
+    }
+    wd[i] = Date.now();
+    done[id] = [...(done[id] || []), Date.now()];
+    store.set({ week: { ...w, done: wd }, done, welcomed: true });
+    confetti();
+    toast('🎉 Goed gedaan!', { actions: [{ label: '📸 Foto toevoegen', fn: () => pickPhotos(id) }] });
+  },
+  'week-new': () => {
+    const prev = store.get().week;
+    store.set({ week: makePlan() });
+    toast('📅 Nieuw weekplan gemaakt', prev ? { actions: [{ label: 'Terug', fn: () => store.set({ week: prev }) }] } : {});
+  },
+  'week-filters': (el, e) => {
+    e.preventDefault();
+    store.set({ moreOpen: true });
+    location.hash = '#/';
+  },
+  'week-shop': () => {
+    const s = store.get();
+    const shop = { ...s.shop };
+    let n = 0;
+    (s.week?.days || []).filter((id) => ACT[id]).forEach((id) => missingOf(ACT[id], s.have).forEach((m) => { if (!shop[m.id]) { shop[m.id] = Date.now(); n++; } }));
+    store.set({ shop });
+    toast(n ? `🛒 ${plural(n, 'ding', 'dingen')} op je lijstje` : 'Alles stond al op je lijstje', { actions: [{ label: 'Bekijk', fn: () => { location.hash = '#/bewaard/lijstje'; } }] });
+  },
+  'week-share': async () => {
+    const w = store.get().week;
+    if (!w) return;
+    const start = fromIso(w.start);
+    const lines = w.days.filter((id) => ACT[id]).map((id, i) => `${dateShort(addDays(start, i))}: ${ACT[id].emoji} ${ACT[id].title}`);
+    const url = `${location.origin}${location.pathname}`;
+    const text = `📅 Ons knutselweekplan\n${lines.join('\n')}\n\nIdeeën van Groteknut: ${url}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Ons knutselweekplan', text }); } catch { /* geannuleerd */ }
+      return;
+    }
+    copyText(text, 'Weekplan gekopieerd 📋');
+  },
+  'sitter-toggle': (el) => {
+    const s = store.get();
+    const cur = sitterIds(s);
+    const id = el.dataset.id;
+    store.set({ sitter: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] });
+  },
+  'sitter-all': () => store.set((s) => ({ sitter: favList(s) })),
+  'sitter-none': () => store.set({ sitter: [] }),
   'photo-add': (el) => pickPhotos(el.dataset.id),
   'photo-open': (el) => {
     const list = el.dataset.id ? photosFor(el.dataset.id) : allPhotos();

@@ -22,7 +22,6 @@ const ALLOWED_KEYS = new Set([
   'prepMinutes', 'duration', 'supervision', 'soloFrom', 'cleanupMinutes', 'noise', 'energy', 'places',
   'materials', 'optional', 'steps', 'ageTips', 'safety', 'say', 'words', 'learn', 'tips', 'extenders',
   'variations', 'themes', 'canStay', 'stayTips', 'pinQuery',
-  'durationMinutes', // oud schema (overgang)
 ]);
 
 const isStr = (v, max = 10000) => typeof v === 'string' && v.trim().length > 0 && v.length <= max;
@@ -62,21 +61,15 @@ export function validateList(list, { file = 'lijst', seen = new Map() } = {}) {
     if (typeof a.wet !== 'boolean') err('wet moet true/false zijn');
     if (typeof a.dirty !== 'boolean') err('dirty moet true/false zijn');
     if (!isInt(a.prepMinutes, 0, 120)) err('prepMinutes moet 0-120 zijn');
-    const legacy = a.duration === undefined && a.durationMinutes !== undefined;
-    if (legacy) {
-      warn('oud schema (durationMinutes): nieuwe kenmerken nog aanvullen');
-      if (!isInt(a.durationMinutes, 5, 240)) err('durationMinutes moet 5-240 zijn');
-    } else if (!Array.isArray(a.duration) || a.duration.length !== 2 || !isInt(a.duration[0], 5, 240) || !isInt(a.duration[1], 5, 240) || a.duration[1] < a.duration[0]) {
+    if (!Array.isArray(a.duration) || a.duration.length !== 2 || !isInt(a.duration[0], 5, 240) || !isInt(a.duration[1], 5, 240) || a.duration[1] < a.duration[0]) {
       err('duration moet [minuten bij ageMin, minuten bij ageMax] zijn (5-240, tweede ≥ eerste)');
     } else if (a.ageMin === a.ageMax && a.duration[0] !== a.duration[1]) warn('duration: bij één leeftijd twee keer hetzelfde getal');
     if (!isInt(a.supervision, 1, 3)) err('supervision moet 1, 2 of 3 zijn');
-    if (!legacy) {
     if (!(a.soloFrom === null || (isInt(a.soloFrom, 1, 5) && a.soloFrom >= a.ageMin && a.soloFrom <= a.ageMax))) err('soloFrom moet null zijn of een leeftijd binnen ageMin-ageMax');
     if (!isInt(a.cleanupMinutes, 0, 60)) err('cleanupMinutes moet 0-60 zijn');
     if (!isInt(a.noise, 1, 3)) err('noise moet 1, 2 of 3 zijn');
     if (!isInt(a.energy, 1, 3)) err('energy moet 1, 2 of 3 zijn');
     if (!Array.isArray(a.places) || a.places.length < 1 || a.places.length > 3 || !a.places.every((p) => placeIds.has(p))) err(`places: 1-3 van ${[...placeIds].join(', ')}`);
-    }
 
     const checkMats = (arr, name, min) => {
       if (!Array.isArray(arr) || arr.length < min) { err(`${name} moet een array zijn (min. ${min})`); return []; }
@@ -103,15 +96,13 @@ export function validateList(list, { file = 'lijst', seen = new Map() } = {}) {
     if (!strArr(a.words, 3, 10, 40)) err('words: 3-10 woorden, elk max 40 tekens');
     if (!Array.isArray(a.learn) || a.learn.length < 1 || a.learn.length > 4 || !a.learn.every((l) => learnIds.has(l))) err('learn: 1-4 geldige ids');
     if (!strArr(a.tips, 1, 4, 320)) err('tips: 1-4 tips, elk max 320 tekens');
-    if (!legacy && !strArr(a.extenders, 2, 5, 320)) err('extenders: 2-5 verlengers, elk max 320 tekens');
+    if (!strArr(a.extenders, 2, 5, 320)) err('extenders: 2-5 verlengers, elk max 320 tekens');
     if (!strArr(a.variations, 2, 5, 320)) err('variations: 2-5 ideeën, elk max 320 tekens');
     if (!Array.isArray(a.themes) || !a.themes.every((t) => themeIds.has(t))) err('themes: alleen geldige thema-ids');
-    if (!legacy) {
-      if (typeof a.canStay !== 'boolean') err('canStay moet true/false zijn');
-      if (a.canStay && !isStr(a.stayTips, 400)) err('stayTips is verplicht als canStay true is (max 400 tekens)');
-      if (!a.canStay && a.stayTips !== undefined) warn('stayTips zonder canStay');
-      if (!isStr(a.pinQuery, 60)) err('pinQuery ontbreekt (max 60 tekens)');
-    }
+    if (typeof a.canStay !== 'boolean') err('canStay moet true/false zijn');
+    if (a.canStay && !isStr(a.stayTips, 400)) err('stayTips is verplicht als canStay true is (max 400 tekens)');
+    if (!a.canStay && a.stayTips !== undefined) warn('stayTips zonder canStay');
+    if (!isStr(a.pinQuery, 60)) err('pinQuery ontbreekt (max 60 tekens)');
 
     // Inhoudelijke checks
     const safetyText = (a.safety || []).join(' ').toLowerCase();

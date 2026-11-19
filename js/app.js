@@ -8,7 +8,10 @@ import { GUIDE } from './data/guide.js';
 import { store, DEFAULT_FILTERS } from './store.js';
 import { esc, md, $, $$, normalize, ageLabel, minutes, plural, debounce, hashSeed, todayKey, shortDate } from './util.js';
 import { activeThemes } from './season.js';
-import { loadPhotos, photosFor, allPhotos, photoCount, addPhotos, fullBlob, deletePhoto } from './photos.js';
+import { loadPhotos, photosFor, allPhotos, photoCount, addPhotos, fullBlob, deletePhoto, setPhotoNote } from './photos.js';
+import { MEDIA_DIR, PHOTOS, VIDEOS } from './data/media.js';
+import { craftView } from './craftmode.js';
+import { WORKSHEETS, WS, buildSheet } from './worksheets.js';
 
 /* ================= Indexen ================= */
 
@@ -73,6 +76,37 @@ for (const r of RECIPES) {
   RECIPE_USES[r.id] = ACTIVITIES.filter((a) =>
     keys.some((k) => a._full.includes(k)) || [...a.materials, ...(a.optional || [])].some((m) => MAT[m.id]?.recipe === r.id));
   for (const a of RECIPE_USES[r.id]) (ACT_RECIPES[a.id] ||= []).push(r.id);
+}
+
+/* ================= Foto's en video's uit de bibliotheek ================= */
+
+const libPhotos = (id) => PHOTOS[id] || [];
+const libSrc = (p, size) => `${MEDIA_DIR}${p.f}-${size}.webp`;
+// Beste foto voor een idee: een eigen foto gaat altijd voor.
+function bestPhoto(id, size = 'm') {
+  const own = photosFor(id)[0];
+  if (own) return { url: own.url, own: true };
+  const p = libPhotos(id)[0];
+  return p ? { url: libSrc(p, size), own: false, p } : null;
+}
+const credit = (p) => `📷 <a href="${esc(p.src)}" target="_blank" rel="noopener">${esc(p.by || 'onbekend')}</a> · ${p.licUrl ? `<a href="${esc(p.licUrl)}" target="_blank" rel="noopener">${esc(p.lic)}</a>` : esc(p.lic)}`;
+const VIDEO_LANG = { geen: 'zonder gesproken uitleg', nl: 'Nederlandse uitleg', en: 'Engelse uitleg' };
+const PHOTO_IDEAS = ACTIVITIES.filter((a) => libPhotos(a.id).length);
+const WORKSHEETS_FOR = {};
+for (const w of WORKSHEETS) for (const id of w.ideas) (WORKSHEETS_FOR[id] ||= []).push(w);
+
+function videoPanel(v, order) {
+  if (!v) return '';
+  return `<section class="panel video-panel" style="--o:${order}">
+    <h2><span class="ic" aria-hidden="true">▶️</span> Bekijk hoe het gaat</h2>
+    <div class="video-box" id="video-box">
+      <button class="video-poster" type="button" data-action="video-play" data-video="${esc(v.id)}" data-title="${esc(v.t)}">
+        <span class="video-play" aria-hidden="true">▶</span>
+        <span class="video-meta"><strong>${esc(v.t)}</strong><small>${esc(v.c)} · ${minutes(Math.max(1, Math.round(v.s / 60)))} · ${esc(VIDEO_LANG[v.lang] || '')}</small></span>
+      </button>
+    </div>
+    <p class="hint">Tik om af te spelen. De video komt van YouTube (in de privacyvriendelijke modus) en werkt alleen met internet.</p>
+  </section>`;
 }
 
 /* ================= Iconen ================= */
@@ -221,7 +255,8 @@ function card(a, { compact = false } = {}) {
   const s = store.get();
   const fav = !!s.favs[a.id];
   const doneN = (s.done[a.id] || []).length;
-  const photo = photosFor(a.id)[0];
+  const best = bestPhoto(a.id, 's');
+  const art = best?.url || '';
   let stock = '';
   if (!compact && hasInventory(s)) {
     const miss = missingOf(a, s.have);
@@ -230,7 +265,7 @@ function card(a, { compact = false } = {}) {
       : '<p class="stock ok">✓ Alles in huis</p>';
   }
   return `<article class="card${compact ? ' card--compact' : ''}" style="--cat:var(--c-${a.category})">
-    <div class="card-art${photo ? ' has-photo' : ''}" aria-hidden="true">${photo ? `<img src="${photo.url}" alt="" loading="lazy">` : `<span class="card-emoji">${a.emoji}</span>`}</div>
+    <div class="card-art${art ? ' has-photo' : ''}" aria-hidden="true">${art ? `<img src="${art}" alt="" loading="lazy" decoding="async">` : `<span class="card-emoji">${a.emoji}</span>`}</div>
     <div class="card-body">
       <p class="card-cat">${esc(CAT[a.category].label)}</p>
       <h3 class="card-title"><a class="card-link" href="#/idee/${a.id}">${esc(a.title)}</a></h3>
@@ -372,7 +407,7 @@ function viewDiscover() {
   ${planBanner()}
   <p class="season" id="season-slot"></p>
   <section class="section" aria-labelledby="cats-title">
-    <div class="section-title"><h2 id="cats-title">Kies een soort</h2></div>
+    <div class="section-title"><h2 id="cats-title">Kies een soort</h2>${PHOTO_IDEAS.length ? '<a class="muted-link" href="#/inspiratie">🖼️ Foto’s per soort →</a>' : ''}</div>
     <div class="chips scroll" role="group" aria-labelledby="cats-title">
       ${CATEGORIES.map((c) => `<button class="chip chip-cat" type="button" style="--cat:var(--c-${c.id})" data-action="filter" data-key="cats" data-value="${c.id}" aria-pressed="false">${c.emoji} ${esc(c.label)} <span class="count" data-cat-count="${c.id}"></span></button>`).join('')}
     </div>
@@ -501,16 +536,37 @@ function resultsHtml(s, list) {
       </div>
       ${SORT_HINT[s.sort] ? `<p class="hint">${esc(SORT_HINT[s.sort])}</p>` : ''}
     </div>`;
+  const wallMode = s.view === 'fotos';
+  const toggle = `<div class="view-toggle" role="group" aria-label="Weergave">
+      <button type="button" data-action="set-view" data-value="lijst" aria-pressed="${!wallMode}">☰ Lijst</button>
+      <button type="button" data-action="set-view" data-value="fotos" aria-pressed="${wallMode}">🖼️ Foto’s</button>
+    </div>`;
   let body;
-  if (list.length) {
+  if (list.length && wallMode) {
+    const withPhoto = list.filter((a) => bestPhoto(a.id));
+    body = withPhoto.length
+      ? `<div class="wall-tools"><a class="btn btn-soft" href="#/veeg">👆 Veeg door de foto’s</a><span class="muted">${plural(withPhoto.length, 'idee', 'ideeën')} met een foto${withPhoto.length < list.length ? ` · ${list.length - withPhoto.length} zonder foto staan in de lijst` : ''}</span></div>
+         <div class="wall">${withPhoto.map((a) => wallItem(a)).join('')}</div>`
+      : emptyBox('🖼️', 'Nog geen foto’s bij deze ideeën', 'Bij deze filters hebben we nog geen voorbeeldfoto’s. Bekijk ze in de lijst.', '<button class="btn btn-primary" type="button" data-action="set-view" data-value="lijst">Toon de lijst</button>');
+  } else if (list.length) {
     body = `<div class="grid">${list.map((a) => card(a)).join('')}</div>`;
   } else if (s.stock !== 'all' && !hasInventory(s)) {
     body = emptyBox('🧺', 'Vertel eerst wat je in huis hebt', 'Vink je spullen aan, dan laten we zien wat je meteen kunt doen.', `<a class="btn btn-primary" href="#/spullen">Spullen invullen</a><button class="btn" type="button" data-action="filter" data-key="stock" data-value="all">Toon alles</button>`);
   } else {
     body = emptyBox('🙈', 'Geen ideeën gevonden', 'Met deze combinatie vinden we niets. Zet een paar filters uit of zoek op iets anders.', '<button class="btn btn-primary" type="button" data-action="reset-filters">Wis alle filters</button>');
   }
-  return `<div class="results-head"><h2>${s.q ? `Zoekresultaten voor ‘${esc(s.q)}’` : 'Alle ideeën'} <span class="muted">(${list.length})</span></h2></div>${sorts}${body}
-    <p class="footer-note">Groteknut · alle ideeën kunnen binnen · <a href="#/gids/over">over deze app</a></p>`;
+  return `<div class="results-head"><h2>${s.q ? `Zoekresultaten voor ‘${esc(s.q)}’` : 'Alle ideeën'} <span class="muted">(${list.length})</span></h2>${toggle}</div>${sorts}${body}
+    <p class="footer-note">Groteknut · alle ideeën kunnen binnen · <a href="#/gids/over">over deze app</a> · <a href="#/bronnen">bronnen van foto’s en video’s</a></p>`;
+}
+
+// Eén tegel op de fotomuur: de beste foto van een idee met de titel eroverheen.
+function wallItem(a, p = null) {
+  const best = p ? { url: libSrc(p, 'm'), p } : bestPhoto(a.id, 'm');
+  const ratio = best.p ? `${best.p.w} / ${best.p.h}` : '4 / 3';
+  return `<a class="wall-item" href="#/idee/${a.id}" style="--cat:var(--c-${a.category})">
+    <img src="${best.url}" alt="" loading="lazy" decoding="async" style="aspect-ratio:${ratio}">
+    <span class="wall-cap"><span aria-hidden="true">${a.emoji}</span> ${esc(a.title)}</span>
+  </a>`;
 }
 
 /* ================= Scherm: idee ================= */
@@ -527,6 +583,11 @@ function viewActivity(id) {
   const steps = (stepState[a.id] ||= new Set());
   const recipes = (ACT_RECIPES[a.id] || []).map((rid) => REC[rid]);
   const photos = photosFor(a.id);
+  const lib = libPhotos(a.id);
+  const heroLib = !photos.length && lib.length ? lib[0] : null;
+  const strip = heroLib ? lib.slice(1) : lib;
+  const video = VIDEOS.idee[a.id];
+  const sheets = WORKSHEETS_FOR[a.id] || [];
   const pinUrl = `https://nl.pinterest.com/search/pins/?q=${encodeURIComponent(a.pinQuery || `${a.title} peuter`)}`;
 
   const fact = (k, v, sub = '') => `<div class="fact"><span class="k">${k}</span><span class="v">${v}</span>${sub ? `<span class="muted" style="font-size:.84rem">${sub}</span>` : ''}</div>`;
@@ -553,8 +614,9 @@ function viewActivity(id) {
   const html = `
   <button class="btn btn-ghost back" type="button" data-action="back">${ICON.back} Terug</button>
   <article class="detail" style="--cat:var(--c-${a.category})">
-    <header class="detail-hero${photos.length ? ' has-photo' : ''}">
+    <header class="detail-hero${photos.length || heroLib ? ' has-photo' : ''}">
       ${photos.length ? `<button class="hero-photo-btn" type="button" data-action="photo-open" data-id="${a.id}" data-photo="${photos[0].id}" aria-label="Foto groot bekijken"><img class="hero-photo" src="${photos[0].url}" alt="Jullie foto bij ${esc(a.title)}" data-full="${photos[0].id}"></button>` : ''}
+      ${heroLib ? `<figure class="hero-lib"><button class="hero-photo-btn" type="button" data-action="lib-open" data-id="${a.id}" data-i="0" aria-label="Foto groot bekijken"><img class="hero-photo" src="${libSrc(heroLib, 'l')}" alt="Voorbeeld: ${esc(a.title)}" width="${heroLib.w}" height="${heroLib.h}"></button><figcaption class="credit">${credit(heroLib)}</figcaption></figure>` : ''}
       <span class="detail-emoji" aria-hidden="true">${a.emoji}</span>
       <p class="detail-cat">${CAT[a.category].emoji} ${esc(CAT[a.category].label)}</p>
       <h1 tabindex="-1">${esc(a.title)}</h1>
@@ -566,6 +628,7 @@ function viewActivity(id) {
         ${fact('Toezicht', `${sup.emoji} ${esc(sup.label)}`, a.soloFrom != null ? `🙂 zelf vanaf ${a.soloFrom} jaar (jij in de buurt)` : 'samen of dichtbij')}
       </div>
       <div class="actions">
+        <a class="btn btn-primary" href="#/idee/${a.id}/knutselen">▶️ Knutselmodus</a>
         <button class="btn btn-toggle" type="button" data-action="fav" data-id="${a.id}" aria-pressed="${fav}">${fav ? '❤️ Bewaard' : '🤍 Bewaar'}</button>
         <button class="btn" type="button" data-action="done" data-id="${a.id}">✅ Gedaan!</button>
         <button class="btn" type="button" data-action="photo-add" data-id="${a.id}">📷 Foto</button>
@@ -575,6 +638,10 @@ function viewActivity(id) {
       </div>
       ${done.length ? `<p class="hint">✓ ${done.length}× gedaan, laatst ${shortDate(done[done.length - 1])}.</p>` : ''}
     </header>
+    ${strip.length ? `<section class="example-strip no-print" aria-label="Voorbeeldfoto's">
+      <p class="subhead">🖼️ Zo kan het eruitzien</p>
+      <div class="strip-row">${strip.map((p) => `<figure class="strip-item"><button type="button" data-action="lib-open" data-id="${a.id}" data-i="${lib.indexOf(p)}" aria-label="Voorbeeldfoto groot bekijken"><img src="${libSrc(p, 'm')}" alt="" loading="lazy" decoding="async" width="${p.w}" height="${p.h}"></button><figcaption class="credit">${credit(p)}</figcaption></figure>`).join('')}</div>
+    </section>` : ''}
     <div class="learn-chips" aria-label="Kenmerken">${traits.map((t) => `<span class="learn-chip">${esc(t)}</span>`).join('')}</div>
     <div class="learn-chips" aria-label="Wat leert je kind">${a.learn.map((l) => `<span class="learn-chip" title="${esc(LRN[l].desc)}">${LRN[l].emoji} ${esc(LRN[l].label)}</span>`).join('')}
       ${a.themes.map((t) => `<a class="learn-chip" href="#/" data-action="go-theme" data-theme="${t}">${THEME[t].emoji} ${esc(THEME[t].label)}</a>`).join('')}
@@ -583,9 +650,15 @@ function viewActivity(id) {
       <div class="detail-main">
         <section class="panel" style="--o:3">
           <h2><span class="ic" aria-hidden="true">📝</span> Zo doe je het</h2>
+          <a class="craft-start no-print" href="#/idee/${a.id}/knutselen"><span aria-hidden="true">▶️</span><span><strong>Stap voor stap in de knutselmodus</strong><small>Groot op je scherm, voorlezen, timer en je scherm blijft aan</small></span></a>
           <ol class="steps">${a.steps.map((st, i) => `<li data-action="step" data-id="${a.id}" data-i="${i}" role="checkbox" aria-checked="${steps.has(i)}" tabindex="0" class="${steps.has(i) ? 'is-done' : ''}">${esc(st)}</li>`).join('')}</ol>
           <p class="hint">Tik op een stap om hem af te vinken.</p>
         </section>
+        ${videoPanel(video, 4)}
+        ${sheets.length ? `<section class="panel no-print" style="--o:4">
+          <h2><span class="ic" aria-hidden="true">🖨️</span> Werkblad om te printen</h2>
+          <div class="stack">${sheets.map((w) => `<a class="tile" href="#/werkblad/${w.id}"><span class="e" aria-hidden="true">${w.emoji}</span><span><h3>${esc(w.title)}</h3><p>${esc(w.desc)}</p></span></a>`).join('')}</div>
+        </section>` : ''}
         ${a.roles ? `<section class="panel roles" style="--o:4">
           <h2><span class="ic" aria-hidden="true">👫</span> Samen met broertje of zusje</h2>
           <p class="muted">Ieder een eigen rol, zodat jong en oud allebei lekker bezig zijn.</p>
@@ -849,7 +922,8 @@ function viewSaved(tab = 'favorieten') {
   } else if (tab === 'fotos') {
     const photos = allPhotos();
     body = photos.length
-      ? `<p class="muted" style="margin-bottom:12px">${plural(photos.length, 'foto', 'foto’s')}, alleen op dit apparaat. Tik op een foto om hem groot te zien, te delen of op te slaan.</p>
+      ? `<p class="muted" style="margin-bottom:12px">${plural(photos.length, 'foto', 'foto’s')}, alleen op dit apparaat. Tik op een foto om hem groot te zien, een notitie toe te voegen, te delen of op te slaan.</p>
+         <div class="btn-row" style="margin-bottom:14px"><a class="btn btn-soft" href="#/fotoboek">📖 Fotoboek maken (printen of pdf)</a></div>
          <div class="photo-grid big">${photos.map((p) => `<button class="photo-thumb" type="button" data-action="photo-open" data-photo="${p.id}" aria-label="${esc(ACT[p.activity]?.title ?? 'Foto')} (${shortDate(p.created)})"><img src="${p.url}" alt="" loading="lazy"><span class="cap">${esc(ACT[p.activity]?.title ?? '')}</span></button>`).join('')}</div>
          <p class="hint">Wis je je browsergegevens, dan zijn de foto’s weg. Sla je favorieten dus ook op je telefoon op. Op een iPhone blijven ze het best bewaard als je Groteknut op je beginscherm zet.</p>`
       : emptyBox('📸', 'Nog geen foto’s', 'Tik bij een idee op ‘📷 Foto’ of na ‘Gedaan!’ op ‘Foto toevoegen’. Zo bouw je een fotoboek van alles wat jullie gemaakt hebben.', '<a class="btn btn-primary" href="#/bewaard/gedaan">Naar wat jullie al deden</a>');
@@ -1231,11 +1305,240 @@ function viewSitter() {
 
 /* ================= Scherm: recepten ================= */
 
+const makeTabs = (tab) => `<nav class="segments two" aria-label="Recepten en werkbladen">
+    <a href="#/recepten" aria-current="${tab === 'recepten' ? 'page' : 'false'}">🥣 Recepten</a>
+    <a href="#/werkbladen" aria-current="${tab === 'werkbladen' ? 'page' : 'false'}">🖨️ Werkbladen</a>
+  </nav>`;
+
 function viewRecipes() {
   const html = `
   <header class="page-head"><h1 tabindex="-1">Recepten</h1><p>Zelf deeg, verf en schuim maken met spullen uit de keuken. Goedkoop, en vaak al een activiteit op zich.</p></header>
-  <div class="tile-grid">${RECIPES.map((r) => `<a class="tile" href="#/recept/${r.id}"><span class="e" aria-hidden="true">${r.emoji}</span><span><h3>${esc(r.title)}</h3><p>⏱ ${minutes(r.minutes)} · meehelpen vanaf ${r.ageMin} jaar</p></span></a>`).join('')}</div>`;
+  ${makeTabs('recepten')}
+  <div class="tile-grid section">${RECIPES.map((r) => `<a class="tile" href="#/recept/${r.id}"><span class="e" aria-hidden="true">${r.emoji}</span><span><h3>${esc(r.title)}</h3><p>⏱ ${minutes(r.minutes)} · meehelpen vanaf ${r.ageMin} jaar${VIDEOS.recept[r.id] ? ' · ▶️ video' : ''}</p></span></a>`).join('')}</div>`;
   return { html, title: 'Recepten', tab: 'recepten', restoreScroll: true };
+}
+
+/* ================= Werkbladen ================= */
+
+const wsState = {};
+
+function viewWorksheets() {
+  const html = `
+  <header class="page-head"><h1 tabindex="-1">Werkbladen</h1><p>Print een werkblad voor een rustig moment: elke keer een nieuw doolhof, nieuwe lijntjes of een nieuwe mandala.</p></header>
+  ${makeTabs('werkbladen')}
+  <div class="tile-grid section">${WORKSHEETS.map((w) => `<a class="tile" href="#/werkblad/${w.id}"><span class="e" aria-hidden="true">${w.emoji}</span><span><h3>${esc(w.title)}</h3><p>${esc(w.desc)}</p></span></a>`).join('')}</div>`;
+  return { html, title: 'Werkbladen', tab: 'recepten', restoreScroll: true };
+}
+
+function viewWorksheet(id) {
+  const w = WS[id];
+  if (!w) return viewNotFound();
+  const st = (wsState[id] ||= { level: w.levels[0][0], seed: (Date.now() % 100000) + 1, count: 1 });
+  const pages = [];
+  for (let k = 0; k < st.count; k++) pages.push(...buildSheet(id, st.level, st.seed + k * 7919));
+  const ideas = w.ideas.map((x) => ACT[x]).filter(Boolean);
+  const html = `
+  <button class="btn btn-ghost back no-print" type="button" data-action="back">${ICON.back} Terug</button>
+  <header class="page-head no-print"><h1 tabindex="-1">${w.emoji} ${esc(w.title)}</h1><p>${esc(w.desc)}</p>
+    ${ideas.length ? `<p class="hint">Hoort bij: ${ideas.map((a) => `<a href="#/idee/${a.id}">${esc(a.title)}</a>`).join(', ')}</p>` : ''}</header>
+  <section class="panel ws-controls no-print">
+    ${w.levels.length > 1 ? `<div class="filter-row"><span class="filter-label">Soort</span><div class="chips">${w.levels.map(([v, l]) => `<button class="chip" type="button" data-action="ws-level" data-id="${id}" data-value="${v}" aria-pressed="${st.level === v}">${esc(l)}</button>`).join('')}</div></div>` : ''}
+    ${id !== 'poppetjes' ? `<div class="filter-row"><span class="filter-label">Hoeveel verschillende bladen?</span><div class="chips">${[1, 2, 3, 5].map((n) => `<button class="chip" type="button" data-action="ws-count" data-id="${id}" data-value="${n}" aria-pressed="${st.count === n}">${n}</button>`).join('')}</div></div>` : ''}
+    <div class="btn-row">
+      <button class="btn btn-primary" type="button" data-action="print">🖨️ Print ${pages.length === 1 ? '1 blad' : `${pages.length} bladen`}</button>
+      <button class="btn" type="button" data-action="ws-new" data-id="${id}">🔄 Nieuw blad</button>
+    </div>
+    <p class="hint">Tip: kies bij het printen ‘Opslaan als PDF’ als je geen printer bij de hand hebt.</p>
+  </section>
+  <div class="ws-pages">${pages.map((p) => `<article class="ws-page">
+      <header class="ws-head"><p class="ws-brand">Groteknut · werkblad</p><h2>${esc(p.title)}</h2><p class="ws-name">Naam: <span></span></p></header>
+      ${p.svg}
+      <footer class="ws-foot">constantdynamics.github.io/groteknut</footer>
+    </article>`).join('')}</div>`;
+  return { html, title: w.title, tab: 'recepten', restoreScroll: true };
+}
+
+/* ================= Fotoboek ================= */
+
+const MONTHS_LONG = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+const longDate = (ts) => { const d = new Date(ts); return `${d.getDate()} ${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`; };
+let bookYear = 'alles';
+
+function viewPhotobook() {
+  const all = allPhotos().slice().sort((x, y) => x.created - y.created);
+  const years = [...new Set(all.map((p) => new Date(p.created).getFullYear()))];
+  if (bookYear !== 'alles' && !years.includes(bookYear)) bookYear = 'alles';
+  const photos = bookYear === 'alles' ? all : all.filter((p) => new Date(p.created).getFullYear() === bookYear);
+  const head = `
+  <button class="btn btn-ghost back no-print" type="button" data-action="back">${ICON.back} Terug</button>
+  <header class="page-head no-print"><h1 tabindex="-1">📖 Fotoboek</h1><p>Al jullie knutselfoto’s op een rij: twee per A4, met het idee en de datum. Voeg bij een foto een notitie toe, bijvoorbeeld wat je kind erover zei.</p></header>`;
+  if (!all.length) {
+    return { html: head + emptyBox('📸', 'Nog geen foto’s', 'Voeg bij een idee een foto toe (ook direct na ‘Gedaan!’). Daarna maak je hier je fotoboek.', '<a class="btn btn-primary" href="#/">Iets kiezen</a>'), title: 'Fotoboek', tab: 'bewaard' };
+  }
+  const pages = [];
+  for (let k = 0; k < photos.length; k += 2) pages.push(photos.slice(k, k + 2));
+  const item = (p) => {
+    const a = ACT[p.activity];
+    return `<figure class="book-item">
+      <div class="book-img"><img src="${p.url}" alt="" data-full="${p.id}"></div>
+      <figcaption>
+        <p class="book-title">${a ? `${a.emoji} ${esc(a.title)}` : 'Knutselwerk'}</p>
+        <p class="book-date">${longDate(p.created)}</p>
+        ${p.note ? `<p class="book-note">“${esc(p.note)}”</p>` : ''}
+        <button class="btn btn-small btn-ghost no-print" type="button" data-action="note-edit" data-photo="${p.id}">✏️ ${p.note ? 'Notitie aanpassen' : 'Notitie toevoegen'}</button>
+      </figcaption>
+    </figure>`;
+  };
+  const html = `${head}
+  <section class="panel no-print book-controls">
+    ${years.length > 1 ? `<div class="filter-row"><span class="filter-label">Welke foto’s?</span><div class="chips">${['alles', ...years].map((y) => `<button class="chip" type="button" data-action="book-year" data-value="${y}" aria-pressed="${bookYear === y}">${y === 'alles' ? 'Alles' : y}</button>`).join('')}</div></div>` : ''}
+    <div class="btn-row"><button class="btn btn-primary" type="button" data-action="print">🖨️ Print ${pages.length === 1 ? '1 pagina' : `${pages.length} pagina’s`}</button></div>
+    <p class="hint">${plural(photos.length, 'foto', 'foto’s')}, oudste eerst. Kies bij het printen ‘Opslaan als PDF’ om het fotoboek te bewaren of te delen.</p>
+  </section>
+  <div class="book">${pages.map((pg) => `<article class="book-page">${pg.map(item).join('')}</article>`).join('')}</div>`;
+  return {
+    html,
+    title: 'Fotoboek',
+    tab: 'bewaard',
+    restoreScroll: true,
+    mount() {
+      // Foto's in volle kwaliteit laden, zodat ze scherp worden geprint.
+      $$('.book img[data-full]', app).forEach((img) => {
+        fullBlob(img.dataset.full).then((b) => { if (b) img.src = trackUrl(URL.createObjectURL(b)); }).catch(() => {});
+      });
+    },
+  };
+}
+
+/* ================= Inspiratie: fotomuur per soort en veeg-modus ================= */
+
+function viewInspiration(cat) {
+  if (cat && !CAT[cat]) return viewNotFound();
+  if (!cat) {
+    const day = hashSeed(todayKey());
+    const tiles = CATEGORIES.map((c) => {
+      const ideas = PHOTO_IDEAS.filter((a) => a.category === c.id);
+      if (!ideas.length) return '';
+      const cover = ideas[day % ideas.length];
+      const n = ideas.reduce((sum, a) => sum + libPhotos(a.id).length, 0);
+      return `<a class="insp-tile" href="#/inspiratie/${c.id}" style="--cat:var(--c-${c.id})">
+        <img src="${libSrc(libPhotos(cover.id)[0], 'm')}" alt="" loading="lazy" decoding="async">
+        <span class="insp-cap"><strong>${c.emoji} ${esc(c.label)}</strong><small>${plural(n, 'foto', 'foto’s')}</small></span>
+      </a>`;
+    }).join('');
+    const html = `
+    <button class="btn btn-ghost back" type="button" data-action="back">${ICON.back} Terug</button>
+    <header class="page-head"><h1 tabindex="-1">🖼️ Inspiratie</h1><p>Voorbeeldfoto’s per soort. Tik op een soort, en dan op een foto om het idee te openen.</p></header>
+    <div class="btn-row" style="margin-bottom:14px"><a class="btn btn-soft" href="#/veeg/alles">👆 Veeg door alle foto’s</a></div>
+    <div class="insp-grid">${tiles}</div>
+    <p class="footer-note"><a href="#/bronnen">Bronnen van de foto’s en video’s</a></p>`;
+    return { html, title: 'Inspiratie', tab: 'ontdek', restoreScroll: true };
+  }
+  const c = CAT[cat];
+  const items = PHOTO_IDEAS.filter((a) => a.category === cat).flatMap((a) => libPhotos(a.id).map((p) => wallItem(a, p)));
+  const html = `
+  <button class="btn btn-ghost back" type="button" data-action="back">${ICON.back} Terug</button>
+  <header class="page-head"><h1 tabindex="-1">${c.emoji} ${esc(c.label)}</h1><p>${plural(items.length, 'voorbeeldfoto', 'voorbeeldfoto’s')}. Tik op een foto om het idee te openen.</p></header>
+  <div class="btn-row" style="margin-bottom:14px"><a class="btn btn-soft" href="#/veeg/${cat}">👆 Veeg door deze foto’s</a><a class="btn btn-ghost" href="#/inspiratie">Alle soorten</a></div>
+  <div class="wall">${items.join('')}</div>`;
+  return { html, title: c.label, tab: 'ontdek', restoreScroll: true };
+}
+
+const swipeState = { key: '', i: 0 };
+
+function viewSwipe(cat) {
+  const s = store.get();
+  let list;
+  if (!cat) list = sortList(ACTIVITIES.filter((a) => matches(a, s)), s).filter((a) => bestPhoto(a.id));
+  else if (cat === 'alles') list = PHOTO_IDEAS.slice().sort((x, y) => hashSeed(x.id + todayKey()) - hashSeed(y.id + todayKey()));
+  else if (CAT[cat]) list = PHOTO_IDEAS.filter((a) => a.category === cat);
+  else return viewNotFound();
+  const key = cat || 'filters';
+  if (swipeState.key !== key) { swipeState.key = key; swipeState.i = 0; }
+  if (!list.length) {
+    return {
+      html: `<button class="btn btn-ghost back" type="button" data-action="back">${ICON.back} Terug</button>${emptyBox('🖼️', 'Geen foto’s om door te vegen', 'Bij deze keuze hebben we nog geen voorbeeldfoto’s.', '<a class="btn btn-primary" href="#/inspiratie">Naar inspiratie</a>')}`,
+      title: 'Veeg door de foto’s', tab: 'ontdek',
+    };
+  }
+  swipeState.i = Math.min(swipeState.i, list.length - 1);
+  const a = list[swipeState.i];
+  const best = bestPhoto(a.id, 'l');
+  const next = list[(swipeState.i + 1) % list.length];
+  const fav = !!s.favs[a.id];
+  const html = `
+  <section class="swipe" aria-label="Veeg door de foto’s">
+    <header class="swipe-top">
+      <button class="icon-btn" type="button" data-action="back" aria-label="Terug">✕</button>
+      <p class="swipe-count">${swipeState.i + 1} / ${list.length}</p>
+    </header>
+    <div class="swipe-card" id="swipe-card" style="--cat:var(--c-${a.category})">
+      <img class="swipe-img" src="${best.url}" alt="Voorbeeld: ${esc(a.title)}">
+      <div class="swipe-info">
+        <p class="card-cat">${CAT[a.category].emoji} ${esc(CAT[a.category].label)}</p>
+        <h1 tabindex="-1">${a.emoji} ${esc(a.title)}</h1>
+        <p>${esc(a.summary)}</p>
+        <div class="card-meta"><span class="pill">${ageLabel(a.ageMin, a.ageMax)}</span><span class="pill">⏱ ${durLabel(a, s)}</span>${messPill(a.mess)}</div>
+        ${best.p ? `<p class="credit">${credit(best.p)}</p>` : ''}
+      </div>
+    </div>
+    <footer class="swipe-nav">
+      <button class="btn" type="button" data-action="swipe" data-value="-1" aria-label="Vorige">‹</button>
+      <button class="btn btn-toggle" type="button" data-action="fav" data-id="${a.id}" aria-pressed="${fav}">${fav ? '❤️ Bewaard' : '🤍 Bewaar'}</button>
+      <a class="btn btn-primary" href="#/idee/${a.id}">Bekijk idee</a>
+      <button class="btn" type="button" data-action="swipe" data-value="1" aria-label="Volgende">›</button>
+    </footer>
+    <link rel="prefetch" href="${bestPhoto(next.id, 'l').url}">
+  </section>`;
+  return {
+    html,
+    title: 'Veeg door de foto’s',
+    tab: 'ontdek',
+    restoreScroll: false,
+    mount() {
+      const card = $('#swipe-card');
+      let x0 = null;
+      let y0 = null;
+      card.addEventListener('pointerdown', (e) => { x0 = e.clientX; y0 = e.clientY; });
+      card.addEventListener('pointerup', (e) => {
+        if (x0 == null) return;
+        const dx = e.clientX - x0;
+        const dy = e.clientY - y0;
+        x0 = null;
+        if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) swipeTo(dx < 0 ? 1 : -1, list.length);
+      });
+    },
+    keys(e) {
+      if (e.key === 'ArrowRight') swipeTo(1, list.length);
+      if (e.key === 'ArrowLeft') swipeTo(-1, list.length);
+    },
+  };
+}
+
+function swipeTo(step, n) {
+  swipeState.i = (swipeState.i + step + n) % n;
+  rerender();
+  $('#swipe-card')?.classList.add(step > 0 ? 'from-right' : 'from-left');
+}
+
+/* ================= Bronnen ================= */
+
+function viewSources() {
+  const rows = PHOTO_IDEAS.map((a) => `<li class="src-item"><a class="src-title" href="#/idee/${a.id}">${a.emoji} ${esc(a.title)}</a>
+      <ul>${libPhotos(a.id).map((p) => `<li>${credit(p)} · <a href="${esc(p.src)}" target="_blank" rel="noopener">bron</a></li>`).join('')}</ul></li>`).join('');
+  const vids = [
+    ...Object.entries(VIDEOS.recept).map(([id, v]) => [REC[id] ? `${REC[id].emoji} ${REC[id].title} (recept)` : id, `#/recept/${id}`, v]),
+    ...Object.entries(VIDEOS.idee).map(([id, v]) => [ACT[id] ? `${ACT[id].emoji} ${ACT[id].title}` : id, `#/idee/${id}`, v]),
+  ];
+  const html = `
+  <button class="btn btn-ghost back" type="button" data-action="back">${ICON.back} Terug</button>
+  <header class="page-head"><h1 tabindex="-1">Bronnen van foto’s en video’s</h1>
+    <p>De voorbeeldfoto’s hebben een vrije licentie (Creative Commons of publiek domein) en komen via Openverse van Flickr en Wikimedia Commons. Ze zijn verkleind; de makers staan hieronder. De video’s zijn van YouTube en worden pas geladen als je erop tikt.</p></header>
+  ${vids.length ? `<section class="section"><div class="section-title"><h2>▶️ Video’s</h2><span class="muted">${vids.length}</span></div>
+    <ul class="src-list">${vids.map(([label, href, v]) => `<li class="src-item"><a class="src-title" href="${href}">${esc(label)}</a><ul><li>${esc(v.t)} · ${esc(v.c)} · <a href="https://www.youtube.com/watch?v=${esc(v.id)}" target="_blank" rel="noopener">YouTube</a></li></ul></li>`).join('')}</ul></section>` : ''}
+  <section class="section"><div class="section-title"><h2>📷 Foto’s</h2><span class="muted">${PHOTO_IDEAS.reduce((n, a) => n + libPhotos(a.id).length, 0)}</span></div>
+    ${rows ? `<ul class="src-list">${rows}</ul>` : '<p class="muted">Nog geen foto’s.</p>'}</section>`;
+  return { html, title: 'Bronnen', tab: 'gids', restoreScroll: true };
 }
 
 function viewRecipe(id) {
@@ -1272,6 +1575,7 @@ function viewRecipe(id) {
         <section class="panel" style="--o:2"><h2><span class="ic" aria-hidden="true">📝</span> Zo maak je het</h2>
           <ol class="steps">${r.steps.map((st, i) => `<li data-action="step" data-id="recept-${r.id}" data-i="${i}" role="checkbox" aria-checked="false" tabindex="0">${esc(st)}</li>`).join('')}</ol>
         </section>
+        ${videoPanel(VIDEOS.recept[r.id], 3)}
         ${r.tips?.length ? `<section class="panel" style="--o:4"><h2><span class="ic" aria-hidden="true">💡</span> Tips</h2><ul class="bullets">${r.tips.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></section>` : ''}
       </div>
       <aside class="detail-side">
@@ -1321,7 +1625,7 @@ function viewGuideSection(id) {
   <header class="page-head"><h1 tabindex="-1">${g.emoji} ${esc(g.title)}</h1><p>${esc(g.intro)}</p></header>
   <div class="stack">${g.blocks.map((b) => `<section class="panel">${block(b)}</section>`).join('')}</div>
   ${next ? `<div class="section"><a class="tile" href="#/gids/${next.id}"><span class="e" aria-hidden="true">${next.emoji}</span><span><p class="muted">Volgende</p><h3>${esc(next.title)}</h3></span></a></div>` : ''}
-  ${id === 'over' ? `<p class="footer-note">${ACTIVITIES.length} ideeën · ${RECIPES.length} recepten · ${NON_BASIC.length} soorten spullen<br><a href="https://github.com/constantdynamics/groteknut">Broncode op GitHub</a></p>` : ''}`;
+  ${id === 'over' ? `<p class="footer-note">${ACTIVITIES.length} ideeën · ${RECIPES.length} recepten · ${NON_BASIC.length} soorten spullen · ${WORKSHEETS.length} soorten werkbladen<br><a href="#/bronnen">Bronnen van foto’s en video’s</a> · <a href="https://github.com/constantdynamics/groteknut">Broncode op GitHub</a></p>` : ''}`;
   return { html, title: g.title, tab: 'gids', restoreScroll: false };
 }
 
@@ -1346,9 +1650,32 @@ const ROUTES = [
   [/^#\/gids\/?$/, viewGuide],
   [/^#\/gids\/([\w-]+)$/, viewGuideSection],
   [/^#\/idee\/([\w-]+)$/, viewActivity],
+  [/^#\/idee\/([\w-]+)\/knutselen$/, viewCraft],
   [/^#\/week\/?$/, viewWeek],
   [/^#\/oppaskaart\/?$/, viewSitter],
+  [/^#\/werkbladen\/?$/, viewWorksheets],
+  [/^#\/werkblad\/([\w-]+)$/, viewWorksheet],
+  [/^#\/fotoboek\/?$/, viewPhotobook],
+  [/^#\/inspiratie\/?$/, () => viewInspiration(null)],
+  [/^#\/inspiratie\/([\w-]+)$/, viewInspiration],
+  [/^#\/veeg\/?$/, () => viewSwipe(null)],
+  [/^#\/veeg\/([\w-]+)$/, viewSwipe],
+  [/^#\/bronnen\/?$/, viewSources],
 ];
+
+function viewCraft(id) {
+  const a = ACT[id];
+  if (!a) return viewNotFound();
+  const view = craftView(a, {
+    matLabel: (mid) => MAT[mid]?.label ?? mid,
+    minutes: durFor(a, store.get()),
+    onDone: (aid) => ACTIONS.done({ dataset: { id: aid } }),
+    onPhoto: (aid) => pickPhotos(aid),
+    onClose: () => { location.hash = `#/idee/${id}`; },
+    toast: (m) => toast(m),
+  });
+  return { ...view, update() { /* niet opnieuw tekenen tijdens het knutselen */ } };
+}
 let current = null;
 let depth = 0;
 const scrollMemo = {};
@@ -1378,6 +1705,7 @@ function render(view) {
 function route() {
   const hash = location.hash || '#/';
   if (current) scrollMemo[current.hash] = window.scrollY;
+  current?.unmount?.();
   closeModal();
   const { fn, params } = resolve(hash);
   const view = fn(...params);
@@ -1394,8 +1722,9 @@ function rerender() {
   const y = window.scrollY;
   const active = document.activeElement;
   const key = active && active !== document.body ? focusKey(active) : null;
+  current.unmount?.();
   const view = current.fn(...current.params);
-  current = { ...current, ...view };
+  current = { ...current, unmount: undefined, keys: undefined, ...view };
   render(view);
   window.scrollTo(0, y);
   if (key) app.querySelector(key)?.focus({ preventScroll: true });
@@ -1675,8 +2004,53 @@ const ACTIONS = {
     const i = Math.max(0, list.findIndex((p) => p.id === el.dataset.photo));
     openLightbox(list, i);
   },
-  'lb-prev': () => lightbox && openLightbox(lightbox.list, (lightbox.index - 1 + lightbox.list.length) % lightbox.list.length),
-  'lb-next': () => lightbox && openLightbox(lightbox.list, (lightbox.index + 1) % lightbox.list.length),
+  'lb-prev': () => {
+    if (!lightbox) return;
+    const i = (lightbox.index - 1 + lightbox.list.length) % lightbox.list.length;
+    if (lightbox.lib) openLibLightbox(lightbox.lib, i); else openLightbox(lightbox.list, i);
+  },
+  'lb-next': () => {
+    if (!lightbox) return;
+    const i = (lightbox.index + 1) % lightbox.list.length;
+    if (lightbox.lib) openLibLightbox(lightbox.lib, i); else openLightbox(lightbox.list, i);
+  },
+  'lib-open': (el) => openLibLightbox(el.dataset.id, Number(el.dataset.i)),
+  'set-view': (el) => store.set({ view: el.dataset.value }),
+  'video-play': (el) => {
+    const box = el.closest('.video-box');
+    if (!navigator.onLine) { toast('Video’s werken alleen met internet'); return; }
+    box.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(el.dataset.video)}?autoplay=1&rel=0&playsinline=1&modestbranding=1" title="${esc(el.dataset.title)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+  },
+  'ws-level': (el) => { wsState[el.dataset.id].level = el.dataset.value; rerender(); },
+  'ws-count': (el) => { wsState[el.dataset.id].count = Number(el.dataset.value); rerender(); },
+  'ws-new': (el) => { wsState[el.dataset.id].seed = Math.floor(Math.random() * 1e6) + 1; rerender(); toast('🔄 Nieuw werkblad gemaakt'); },
+  'book-year': (el) => { bookYear = el.dataset.value === 'alles' ? 'alles' : Number(el.dataset.value); rerender(); },
+  swipe: (el) => {
+    const n = Number($('.swipe-count')?.textContent.split('/')[1]) || 1;
+    swipeTo(Number(el.dataset.value), n);
+  },
+  'note-edit': (el) => {
+    const id = el.dataset.photo;
+    const p = allPhotos().find((x) => x.id === id);
+    if (!p) return;
+    showModal(`
+      <h2 id="modal-title">✏️ Notitie bij de foto</h2>
+      <p class="muted">Bijvoorbeeld wat je kind erover zei, of hoe oud het toen was. De notitie komt ook in het fotoboek.</p>
+      <form data-form="note" data-photo="${id}">
+        <label class="sr-only" for="note-text">Notitie</label>
+        <textarea id="note-text" maxlength="300" rows="3" placeholder="“Dit is een draak met een feestmuts!”">${esc(p.note || '')}</textarea>
+        <div class="btn-row" style="margin-top:12px"><button class="btn btn-primary" type="submit">Bewaren</button><button class="btn btn-ghost" type="button" data-action="modal-close">Annuleren</button></div>
+      </form>`);
+    const form = $('#modal form[data-form="note"]');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await setPhotoNote(id, $('#note-text').value);
+      closeModal();
+      toast('✏️ Notitie bewaard');
+      refresh();
+    });
+    setTimeout(() => $('#note-text')?.focus(), 0);
+  },
   'lb-share': async () => {
     if (!lightbox?.blob) return;
     const file = new File([lightbox.blob], lightbox.filename, { type: 'image/jpeg' });
@@ -1702,6 +2076,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeModal();
   if (lightbox && e.key === 'ArrowLeft') ACTIONS['lb-prev']();
   if (lightbox && e.key === 'ArrowRight') ACTIONS['lb-next']();
+  if (!lightbox && !$('#modal') && !e.target.closest?.('input, textarea')) current?.keys?.(e);
   const el = e.target.closest?.('[data-action="step"]');
   if (el && (e.key === 'Enter' || e.key === ' ')) {
     e.preventDefault();
@@ -1765,14 +2140,34 @@ async function openLightbox(list, index) {
     <h2 id="modal-title">📸 ${esc(a?.title ?? 'Foto')}</h2>
     <img class="lightbox-img" src="${url}" alt="Foto bij ${esc(a?.title ?? '')}">
     <p class="muted lightbox-meta">${shortDate(p.created)}${list.length > 1 ? ` · ${index + 1} van ${list.length}` : ''}${a ? ` · <a href="#/idee/${a.id}">naar het idee</a>` : ''}</p>
+    ${p.note ? `<p class="lightbox-note">“${esc(p.note)}”</p>` : ''}
     <div class="btn-row">
       ${list.length > 1 ? '<button class="btn" type="button" data-action="lb-prev" aria-label="Vorige foto">‹</button><button class="btn" type="button" data-action="lb-next" aria-label="Volgende foto">›</button>' : ''}
+      <button class="btn" type="button" data-action="note-edit" data-photo="${p.id}">✏️ Notitie</button>
       ${canShareFiles ? '<button class="btn" type="button" data-action="lb-share">📤 Delen</button>' : ''}
       ${blob ? `<a class="btn" href="${url}" download="${filename}">⬇️ Opslaan</a>` : ''}
       <button class="btn btn-ghost" type="button" data-action="lb-delete">🗑️ Verwijderen</button>
       <button class="btn btn-primary" type="button" data-action="modal-close">Sluiten</button>
     </div>`, 'lightbox');
   lightbox = { list, index, url: blob ? url : null, blob, filename };
+}
+
+// Voorbeeldfoto's (vrije licentie) groot bekijken, met naamsvermelding.
+function openLibLightbox(ideaId, index) {
+  const list = libPhotos(ideaId);
+  const p = list[index];
+  const a = ACT[ideaId];
+  if (!p || !a) return;
+  showModal(`
+    <h2 id="modal-title">🖼️ ${esc(a.title)}</h2>
+    <img class="lightbox-img" src="${libSrc(p, 'l')}" alt="Voorbeeld: ${esc(a.title)}">
+    <p class="muted lightbox-meta">${credit(p)}${list.length > 1 ? ` · ${index + 1} van ${list.length}` : ''}</p>
+    <div class="btn-row">
+      ${list.length > 1 ? '<button class="btn" type="button" data-action="lb-prev" aria-label="Vorige foto">‹</button><button class="btn" type="button" data-action="lb-next" aria-label="Volgende foto">›</button>' : ''}
+      <a class="btn" href="${esc(p.src)}" target="_blank" rel="noopener">Bron bekijken</a>
+      <button class="btn btn-primary" type="button" data-action="modal-close">Sluiten</button>
+    </div>`, 'lightbox');
+  lightbox = { lib: ideaId, list, index, url: null };
 }
 
 /* ================= Delen, toast, modal, confetti ================= */
@@ -1893,7 +2288,11 @@ window.addEventListener('scroll', () => {
 }, { passive: true });
 
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    // Ontbrekende hoofdfoto's (bijv. na een eerdere keer zonder internet) alsnog voor offline bewaren.
+    navigator.serviceWorker.ready.then((reg) => { if (navigator.onLine) reg.active?.postMessage('precache-media'); }).catch(() => {});
+  });
 }
 
 /* ================= Start ================= */

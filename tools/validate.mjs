@@ -127,6 +127,48 @@ export function validateList(list, { file = 'lijst', seen = new Map() } = {}) {
   return { errors, warnings };
 }
 
+// Foto's en video's (js/data/media.js): bestaan de bestanden, zijn licentie en maker ingevuld?
+export async function validateMedia(activityIds, recipeIds) {
+  const errors = [];
+  const { MEDIA_DIR, PHOTOS, VIDEOS } = await import(pathToFileURL(resolve(root, 'js/data/media.js')));
+  const { existsSync } = await import('node:fs');
+  const LIC = /^(CC BY(-SA|-NC|-NC-SA)? \d\.\d|CC0( 1\.0)?|Publiek domein)$/;
+  let n = 0;
+  for (const [id, list] of Object.entries(PHOTOS)) {
+    const where = `media › ${id}`;
+    if (!activityIds.has(id)) errors.push(`✖ ${where}: onbekend idee`);
+    if (!Array.isArray(list) || list.length < 1 || list.length > 4) errors.push(`✖ ${where}: 1 tot 4 foto's`);
+    for (const p of list || []) {
+      n++;
+      if (!/^[a-z0-9-]+-[0-9a-f]{6}$/.test(p.f || '') || !p.f.startsWith(`${id}-`)) errors.push(`✖ ${where}: ongeldige bestandsnaam "${p.f}"`);
+      for (const s of ['s', 'm', 'l']) if (!existsSync(resolve(root, `${MEDIA_DIR}${p.f}-${s}.webp`))) errors.push(`✖ ${where}: bestand ontbreekt: ${p.f}-${s}.webp`);
+      if (!isInt(p.w, 100, 4000) || !isInt(p.h, 100, 4000)) errors.push(`✖ ${where}: w/h ontbreken bij ${p.f}`);
+      if (!isStr(p.by, 120)) errors.push(`✖ ${where}: maker ontbreekt bij ${p.f}`);
+      if (!/^https:\/\//.test(p.src || '')) errors.push(`✖ ${where}: bronlink ontbreekt bij ${p.f}`);
+      if (!LIC.test(p.lic || '')) errors.push(`✖ ${where}: licentie "${p.lic}" niet toegestaan bij ${p.f}`);
+      if (/^CC BY/.test(p.lic || '') && !/^https:\/\/creativecommons\.org\//.test(p.licUrl || '')) errors.push(`✖ ${where}: licentielink ontbreekt bij ${p.f}`);
+    }
+  }
+  const videoCheck = (kind, ids) => {
+    for (const [id, v] of Object.entries(VIDEOS[kind] || {})) {
+      const where = `video › ${kind} › ${id}`;
+      if (!ids.has(id)) errors.push(`✖ ${where}: onbekend ${kind}`);
+      if (!/^[\w-]{11}$/.test(v.id || '')) errors.push(`✖ ${where}: ongeldig YouTube-id`);
+      if (!isStr(v.t, 200) || !isStr(v.c, 120)) errors.push(`✖ ${where}: titel of kanaal ontbreekt`);
+      if (!['geen', 'nl', 'en'].includes(v.lang)) errors.push(`✖ ${where}: lang moet geen, nl of en zijn`);
+      if (!isInt(v.s, 5, 3600)) errors.push(`✖ ${where}: lengte (s) ontbreekt`);
+    }
+  };
+  videoCheck('idee', activityIds);
+  videoCheck('recept', recipeIds);
+  const listFile = resolve(root, 'media-list.json');
+  if (existsSync(listFile)) {
+    for (const f of JSON.parse(readFileSync(listFile, 'utf8'))) if (!existsSync(resolve(root, f))) errors.push(`✖ media-list.json: bestand ontbreekt: ${f}`);
+  }
+  const nv = Object.keys(VIDEOS.idee || {}).length + Object.keys(VIDEOS.recept || {}).length;
+  return { errors, summary: `${Object.keys(PHOTOS).length} ideeën met ${n} foto's · ${nv} video's` };
+}
+
 // CLI
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const files = process.argv.slice(2);
@@ -150,6 +192,13 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     warnings.forEach((w) => console.warn(w));
     nErr += errors.length;
     nWarn += warnings.length;
+  }
+  if (!files.length) {
+    const { RECIPES } = await import(pathToFileURL(resolve(root, 'js/data/recipes.js')));
+    const media = await validateMedia(new Set(seen.keys()), new Set(RECIPES.map((r) => r.id)));
+    media.errors.forEach((e) => console.error(e));
+    nErr += media.errors.length;
+    console.log(`media: ${media.summary} · ${media.errors.length} fout(en)`);
   }
   console.log(`\n${seen.size} ideeën gecontroleerd · ${nErr} fout(en) · ${nWarn} waarschuwing(en)`);
   process.exit(nErr ? 1 : 0);

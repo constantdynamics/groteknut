@@ -37,6 +37,7 @@ const DEFAULTS = {
   moreOpen: false,
   week: null, // { start: 'JJJJ-MM-DD', seed, days: [idee-id × 7], skip: [], done: {dag: true}, filters, label }
   sitter: null, // idee-id's voor de oppaskaart (null = standaardkeuze)
+  view: 'lijst', // Ontdek: 'lijst' of 'fotos' (fotomuur)
 };
 
 const clone = (o) => JSON.parse(JSON.stringify(o));

@@ -35,14 +35,31 @@ of het nat of vies mag worden en wat je in huis hebt. Dan krijg je ideeën die b
   stap voor stap, waar je op let, wat je kunt zeggen, verlengers en (bij broertjes en zusjes) de rol van de jongste en de oudste.
   Elke kaart wordt gemeten en krijgt zo nodig een kleinere letter, zodat hij op één pagina past.
 - **Eigen foto’s**: voeg foto’s toe aan een idee (ook direct na ‘Gedaan!’). Ze verschijnen groot op de ideepagina,
-  als miniatuur op het kaartje en in een galerij. Ze blijven alleen op je eigen apparaat (IndexedDB).
+  als miniatuur op het kaartje en in een galerij, met een notitie als je wilt (bijv. wat je kind zei).
+  Ze blijven alleen op je eigen apparaat (IndexedDB).
+- **Fotoboek**: al jullie foto’s op een rij, twee per A4 met het idee, de datum en je notitie. Te printen of als pdf te bewaren.
+- **Voorbeeldfoto’s** met een vrije licentie (Creative Commons of publiek domein, via Openverse van Flickr en Wikimedia),
+  verkleind en op de site zelf gezet, met de naam van de maker erbij: 229 foto’s bij 123 ideeën, allemaal
+  met de hand nagelopen (geen blote kinderen, niets onveiligs in beeld). Per idee 1 tot 4 foto’s: groot bovenaan,
+  in een fotostrip en op het kaartje. Een eigen foto gaat altijd voor. Alle bronnen staan op de pagina *Bronnen*.
+- **Fotomuur, veeg-modus en inspiratie per soort**: wissel in Ontdek tussen lijst en foto’s, veeg door de ideeën
+  (met een hartje om te bewaren) of blader per soort door alle voorbeeldfoto’s.
+- **62 video’s** van YouTube bij 14 recepten en 48 ideeën met een techniek, liefst zonder gesproken uitleg
+  (anders Nederlands, dan Engels). Ze laden pas als je
+  erop tikt (via youtube-nocookie.com), zodat er zonder tik niets naar YouTube gaat.
+- **Knutselmodus**: één stap per scherm in grote letters, met ‘Let op’ en ‘Wat kun je zeggen?’ ertussen, voorlezen
+  met één tik, een timer met de speeltijd en een scherm dat aan blijft. Vegen of tikken voor de volgende stap.
+- **Werkbladen om te printen**: doolhofjes (3 moeilijkheden), lijnen overtrekken, mandala’s en patronen,
+  papieren poppetjes met kleertjes en ‘maak de tekening af’. Elke keer een nieuw blad.
 - **Voorbeelden op Pinterest**: per idee een knop die een passende zoekopdracht op Pinterest opent
   (er worden geen foto’s van anderen overgenomen).
 - **15 basisrecepten**: speeldeeg, zoutdeeg, vingerverf, eetbare verf, wolkendeeg, sneeuwdeeg, maizenapap, zeepschuim, bellenblaas en meer.
 - **Gids**: veilig knutselen, wat je kunt zeggen tijdens het knutselen, wat je per leeftijd kunt verwachten, rommel de baas.
 - **Nu in het seizoen**: herfst, Sint-Maarten, Sinterklaas, kerst, carnaval, Pasen, Koningsdag, Moederdag… (rekent zelf de data uit).
-- Werkt **offline** en is te **installeren** op je beginscherm. Licht en donker thema.
+- Werkt **offline** (ook de hoofdfoto’s; voorbeeldfoto’s van een idee dat je opende ook) en is te **installeren**
+  op je beginscherm. Licht en donker thema.
 - **Privacy**: alles blijft op je eigen apparaat (localStorage en IndexedDB). Geen account, geen tracking.
+  YouTube wordt alleen geladen als je zelf op een video tikt.
 
 ## Lokaal draaien
 

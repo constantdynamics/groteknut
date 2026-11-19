@@ -30,7 +30,7 @@ function addToIndex(meta) {
   const url = URL.createObjectURL(meta.thumb);
   thumbUrls.set(meta.id, url);
   const list = index.get(meta.activity) || [];
-  list.push({ id: meta.id, activity: meta.activity, created: meta.created, url });
+  list.push({ id: meta.id, activity: meta.activity, created: meta.created, url, note: meta.note || '' });
   list.sort((a, b) => b.created - a.created);
   index.set(meta.activity, list);
 }
@@ -98,6 +98,19 @@ export async function addPhotos(activity, files) {
     n++;
   }
   return n;
+}
+
+// Notitie bij een foto opslaan (bijv. wat je kind zei). Leeg = notitie weghalen.
+export async function setPhotoNote(id, note) {
+  const db = await openDb();
+  const t = db.transaction('meta', 'readwrite');
+  const store = t.objectStore('meta');
+  const meta = await asPromise(store.get(id));
+  if (!meta) return;
+  meta.note = String(note || '').trim().slice(0, 300);
+  store.put(meta);
+  await finished(t);
+  for (const list of index.values()) for (const p of list) if (p.id === id) p.note = meta.note;
 }
 
 export async function fullBlob(id) {

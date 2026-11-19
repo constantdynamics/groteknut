@@ -140,7 +140,7 @@ export async function validateMedia(activityIds, recipeIds) {
     if (!Array.isArray(list) || list.length < 1 || list.length > 4) errors.push(`✖ ${where}: 1 tot 4 foto's`);
     for (const p of list || []) {
       n++;
-      if (!/^[a-z0-9-]+-\d$/.test(p.f || '')) errors.push(`✖ ${where}: ongeldige bestandsnaam "${p.f}"`);
+      if (!/^[a-z0-9-]+-[0-9a-f]{6}$/.test(p.f || '') || !p.f.startsWith(`${id}-`)) errors.push(`✖ ${where}: ongeldige bestandsnaam "${p.f}"`);
       for (const s of ['s', 'm', 'l']) if (!existsSync(resolve(root, `${MEDIA_DIR}${p.f}-${s}.webp`))) errors.push(`✖ ${where}: bestand ontbreekt: ${p.f}-${s}.webp`);
       if (!isInt(p.w, 100, 4000) || !isInt(p.h, 100, 4000)) errors.push(`✖ ${where}: w/h ontbreken bij ${p.f}`);
       if (!isStr(p.by, 120)) errors.push(`✖ ${where}: maker ontbreekt bij ${p.f}`);
